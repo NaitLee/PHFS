@@ -1,7 +1,7 @@
 
 from classesLib import MacroResult, MacroParams
-from helpers import concat_dict
-import datetime, time
+from helpers import concat_dict, wildcard2re
+import datetime, time, re
 
 class StandardCommands():
     TRUE = '1'
@@ -17,7 +17,7 @@ class StandardCommands():
     def __init__(self):
         self.global_vars = {}
     def _judge(self, value):
-        return False if value in self.FALSE_VALUES else True
+        return False if value.strip() in self.FALSE_VALUES else True
     def _bool(self, value):
         return self.TRUE if value else self.FALSE
     def sym_style(self, param: MacroParams):
@@ -74,7 +74,7 @@ class StandardCommands():
         return MacroResult(string)
     def section(self, param: MacroParams):
         page = param.tpl_interpreter.get_section(param.params[1], param, True, True)
-        return MacroResult(page.content, False, page.headers, page.cookies)
+        return MacroResult(page.content, False, False, page.headers, page.cookies)
     def translation(self, param: MacroParams):
         t = param.tpl_interpreter
         p = param.params
@@ -94,17 +94,20 @@ class StandardCommands():
                 status = False
         return MacroResult(self._bool(status))
     def disconnect(self, param: MacroParams):
-        param.request.close()
-        return MacroResult('')
+        return MacroResult('', True, True)
     def add_header(self, param: MacroParams):
         header = param.params[1].split(':')
         header_dict = { header[0]: header[1].strip() }
-        return MacroResult('', False, header_dict)
+        return MacroResult('', False, False, header_dict)
     def length(self, param: MacroParams):
         return MacroResult(str(len(param.params[1])))
     def get(self, param: MacroParams):
         # TODO
         return MacroResult(self.FALSE)
+    def match(self, param: MacroParams):
+        regex = wildcard2re(param.params[1])
+        result = re.match(regex, param.params[2], re.I | re.M)
+        return MacroResult(self._bool(result))
 class CommandsMap(StandardCommands):
     def __init__(self):
         self.commands_map = {
@@ -127,5 +130,6 @@ class CommandsMap(StandardCommands):
             'time': self.time,
             'length': self.length,
             'get': self.get,
+            'match': self.match,
             '_unsupported': lambda param: MacroResult(','.join(param.params))
         }

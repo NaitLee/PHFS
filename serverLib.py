@@ -1,9 +1,10 @@
 
 import os, io, mimeLib
 from werkzeug.wrappers import Request, Response
+from werkzeug.utils import send_file
 from tplLib import TplInterpreter
 from vfsLib import VFSManager
-from classesLib import MacroParams
+from classesLib import MacroParams, Page
 
 class PHFSServer(TplInterpreter):
     def __init__(self):
@@ -12,6 +13,7 @@ class PHFSServer(TplInterpreter):
     def wsgi(self, environ, start_response):
         request = Request(environ)
         response = Response('bad request', 400)
+        page = Page('', 400, False, {}, [])
         path = request.path
         resource = self.vfs_manager.url_to_resource(path)
         if path[0:2] == '/~':
@@ -24,12 +26,12 @@ class PHFSServer(TplInterpreter):
                 response = Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime(path))
             else:
                 if os.path.exists(resource) and os.path.isfile(resource):
-                    f = io.open(resource, 'rb')
-                    response = Response(f.read(), 200, {})
-                    f.close()
+                    response = send_file(resource, environ)
                 else:
                     page = self.get_section('not found', MacroParams([], self, {}, request, self.vfs_manager), True, True)
                     response = Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime('*.html'))
+        if page.disconnect:
+            return Response()(environ, start_response)
         return response(environ, start_response)
     def __call__(self, environ, start_response):
         return self.wsgi(environ, start_response)

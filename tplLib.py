@@ -151,7 +151,7 @@ class TplInterpreter():
             if result.headers['Location'] != param.request.path:
                 status = 302
         result.headers['Server'] = 'PHFS/0.0.1'
-        return Page(result.content, status, result.headers, result.cookies)
+        return Page(result.content, status, result.disconnect, result.headers, result.cookies)
     def get_list(self, param: MacroParams):
         _file = self.get_section('file', param, False, True)
         _folder = self.get_section('folder', param, False, True)
@@ -202,6 +202,7 @@ class TplInterpreter():
         length = len(content)
         full_macro = ['']
         broken = False
+        disconnect = False
         headers = {
             'Server': 'PHFS/0.0.1'
         }
@@ -223,10 +224,12 @@ class TplInterpreter():
                         full_macro[0] = full_macro[0][1:]
                         full_macro[-1] = full_macro[-1][0:-1]
                         result = MacroResult('')
-                        if not broken:
+                        if not (broken or disconnect):
                             result = self.exec_macro(full_macro, symbols, param)
                             if result.break_exec:
                                 broken = True
+                            if result.disconnect:
+                                disconnect = True
                             for i in result.headers:
                                 headers[i] = result.headers[i]
                             for i in result.cookies:
@@ -259,7 +262,7 @@ class TplInterpreter():
         if macro_level != 0 or quote_level != 0:
             print(macro_level, quote_level)
             raise MacroNotClosedProperly
-        return MacroResult(content, broken, headers, cookies)
+        return MacroResult(content, broken, disconnect, headers, cookies)
     def parse_section(self, section, param) -> MacroResult:
         symbols = concat_dict(section.symbols, param.symbols)
         return self.parse_text(section.content, symbols, param)

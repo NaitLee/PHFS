@@ -1,15 +1,17 @@
 
 class Page():
-    def __init__(self, content, status=400, headers={}, cookies=[]):
+    def __init__(self, content, status=400, disconnect=False, headers={}, cookies=[]):
         self.content = content
         self.status = status
+        self.disconnect = disconnect
         self.headers = headers
         self.cookies = cookies
 
 class MacroResult():
-    def __init__(self, content: str, break_exec=False, headers={}, cookies=[]):
+    def __init__(self, content: str, break_exec=False, disconnect=False, headers={}, cookies=[]):
         self.content = content
         self.break_exec = break_exec
+        self.disconnect = disconnect
         self.headers = headers
         self.cookies = cookies
 

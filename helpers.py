@@ -35,7 +35,7 @@ def smartsize(b: int):
     return str(round(n, 1)) + ' ' + units[i]
 
 def wildcard2re(e: str):
-    return e.replace('*', '.*').replace('?', '.?')
+    return e.replace('*', '.*').replace('?', '.?').replace(';', '|')
 
 def concat_dict(*dicts):
     new_dict = {}
