@@ -59,9 +59,9 @@ class TplInterpreter():
                 'up': lambda p: self.get_section('up', p, True, True),
                 'upload-link': lambda p: self.get_section('upload-link', p, True, True),
                 'host': lambda p: MacroResult(p.request.host),
-                'number': lambda p: MacroResult(str(len(os.listdir(p.request.path)))),
-                'number-files': lambda p: MacroResult(str(len(list(filter(lambda x: os.path.isfile(x), os.listdir(p.request.path)))))),
-                'number-folders': lambda p: MacroResult(str(len(list(filter(lambda x: os.path.isdir(x), os.listdir(p.request.path)))))),
+                'number': lambda p: MacroResult(str(len(os.listdir(p.request.path_real)))),
+                'number-files': lambda p: MacroResult(str(len(list(filter(lambda x: os.path.isfile(x), os.listdir(p.request.path_real)))))),
+                'number-folders': lambda p: MacroResult(str(len(list(filter(lambda x: os.path.isdir(x), os.listdir(p.request.path_real)))))),
                 'total-size': lambda p: MacroResult('0'),
                 'total-kbytes': lambda p: MacroResult('0'),
                 'total-bytes': lambda p: MacroResult('0'),
@@ -116,13 +116,17 @@ class TplInterpreter():
             p = t[0].split('|')
             for j in p[0].split('='):
                 j = j.strip()
-                if len(j) > 0:
-                    if j[0] == '+':
-                        j = j[1:]
+                plus = False
+                if j[0:1] == '+':
+                    plus = True
+                    j = j[1:]
                 if j not in self.sections:
                     self.sections[j] = self.Section('', [], {})
-                self.sections[j].content += t[1]
-                self.sections[j].params = p
+                if plus:
+                    self.sections[j].content += t[1]
+                else:
+                    self.sections[j].content = t[1]
+                    self.sections[j].params = p
         self.translations = {}
         for i in self.get_section('special:strings', MacroParams([], self, {}, None, None, None), True, True).content.split('\n'):
             pair = i.split('=', 1)
@@ -156,7 +160,7 @@ class TplInterpreter():
         _file = self.get_section('file', param, False, True)
         _folder = self.get_section('folder', param, False, True)
         _link = self.get_section('link', param, False, True)
-        scanresult = os.scandir(param.request.path)
+        scanresult = os.scandir(param.request.path_real)
         fileinfos = {   # for sorting
             'name': [],
             'ext': [],
@@ -170,7 +174,7 @@ class TplInterpreter():
                 # if not (os.path.exists(e.path) and os.access(e.path, os.R_OK)):  # sometimes appears a non-exist or unreadable file
                 #     continue
                 stats = e.stat()
-                url = purify(e.path + ('' if e.is_file() else '/'))
+                url = purify(param.request.path + e.name + ('' if e.is_file() else '/'))
                 name = e.name.replace('|', '&#124;')
                 last_modified = str(datetime.datetime.fromtimestamp(stats.st_mtime)).split('.')[0]
                 last_modified_dt = str(stats.st_mtime)

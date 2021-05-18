@@ -1,4 +1,11 @@
 
+class Resource():
+    def __init__(self, url, path_virtual, path_real, download_forbidden=False):
+        self.url = url
+        self.path_virtual = path_virtual
+        self.path_real = path_real
+        self.download_forbidden = download_forbidden
+
 class Page():
     def __init__(self, content, status=400, disconnect=False, headers={}, cookies=[]):
         self.content = content

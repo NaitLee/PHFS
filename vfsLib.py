@@ -1,8 +1,8 @@
 
+from classesLib import Resource
 
 class VFSManager():
     class ItemAttributes():
-        isFolder = False
         isVirtual = False
         isRoot = False
         isBrowsable = True
@@ -21,7 +21,6 @@ class VFSManager():
     class ItemProperties(ItemAttributes):
         _locked = False
         _download_count = 0
-        name = ''
         comment = ''
         resource = '/'
         node = None
@@ -37,7 +36,6 @@ class VFSManager():
         default_file_mask = '*'
         dont_count_as_download_mask = ''
         upload_filter_mask = '*'
-        parent = None
         def __init__(self, **args):
             super().__init__()
             for i in args:
@@ -45,26 +43,24 @@ class VFSManager():
     class Item():
         def __init__(self, properties):
             self.properties = properties
-    class VirtualFolder(Item):
-        def __init__(self, properties):
-            super().__init__(properties)
-    class RealFolder(Item):
-        def __init__(self, properties):
-            super().__init__(properties)
     class Link(Item):
         def __init__(self, properties):
             super().__init__(properties)
     def __init__(self, vfs_file='hfs.vfs'):
         self.vfs = {
-            '': self.VirtualFolder(self.ItemProperties(
-                name='/',
+            '': self.Item(self.ItemProperties(
                 resource='/',
-                isFolder=True,
-                isVirtual=True,
+                isVirtual=False,
                 isRoot=True,
                 dontCountAsDownload=True,
                 canArchive=True,
-                icon=1
+                icon=1,
+            )),
+            '/1': self.Item(self.ItemProperties(
+                resource='/mnt/319789E97FF27EB0/',
+                isVirtual=False,
+                canArchive=True,
+                icon=2
             ))
         }
     def add_item(self, **args):
@@ -82,5 +78,16 @@ class VFSManager():
             if i.properties.name == i:
                 del i
     def url_to_resource(self, url):
-        return url
+        levels = url.split('/')
+        path_virtual = url
+        count = len(levels)
+        while path_virtual not in self.vfs and count >= 0:
+            path_virtual = '/'.join(levels[0:count])
+            count -= 1
+        if count != -1:
+            item = self.vfs[path_virtual]
+            path_real = item.properties.resource + '/'.join(levels[count + 1:]) if not item.properties.isVirtual else ''
+            return Resource(url, path_virtual, path_real)
+        else:
+            return None
     
