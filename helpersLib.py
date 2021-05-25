@@ -1,6 +1,40 @@
 #!/usr/bin/python3
 
 import urllib
+from classesLib import DictAsObject
+
+def object_from_dict(d: dict):
+    """ Get a `DictAsObject` from a normal `dict`
+    """
+    n = DictAsObject()
+    for i in d:
+        n[i] = d[i]
+    return n
+
+def replace_str(str0: str, str1: str, str2: str):
+    """ A faster string replacer for once replacing.  
+        `str0`: Source string  
+        `str1`: Original string  
+        `str2`: Target string
+    """
+    results = []
+    str1_len = len(str1)
+    parsing_len = len(str0) - str1_len + 1
+    if parsing_len >= 0 and str1_len > 0:
+        i = 0
+        while i <= parsing_len:
+            if i >= 0:
+                sliced = str0[i:i + str1_len]
+                if sliced == str1:
+                    results.append(str2)
+                    i += str1_len
+                    # Remove this break if want to replace all, but slower than native str.replace()
+                    break
+                results.append(str0[i])
+            i += 1
+        results.append(str0[i:])
+        return ''.join(results)
+    return str0
 
 def parse_ini(c: str):
     """ Parse an ini content, returns a dict """

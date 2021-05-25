@@ -4,6 +4,7 @@
 ----
 🏗 Under construction...
 
+🌮 Note: the `main` branch is in code-freeze, and the newest rewrite is in branch `3rd-rewrite`, also see Project.
 ----
 
 👏 Features that works:
