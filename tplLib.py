@@ -1,7 +1,9 @@
 
-from classesLib import TplSection, UniParam, MacroResult, MacroToCallable
+import datetime, os
+
+from classesLib import TplSection, UniParam, MacroResult, MacroToCallable, PageParam, Page
 from scriptLib import Commands
-from helpersLib import replace_str, read_ini, object_from_dict
+from helpersLib import replace_str, read_ini, object_from_dict, concat_dict, concat_list, purify, smartsize
 
 class MacroNotClosedProperly(Exception):
     """ Exception: Macro not closed properly """
@@ -17,8 +19,50 @@ class Interpreter():
     """
     def __init__(self, tpl_file='hfs.tpl'):
         self.handler = Commands()
+        self.symbols = {
+            'style': self.handler.sym_style,
+            'user': self.handler.sym_user,
+            'login-link': lambda p: self.get_section('login-link', p, True, True),
+            'loggedin': lambda p: self.get_section('loggedin', p, True, True),
+            'ip': lambda p: MacroResult(p.request.host),
+            'version': lambda p: MacroResult('0.0.1'),
+            'timestamp': lambda p: MacroResult(str(datetime.datetime.now())),
+            'uptime': lambda p: MacroResult(str(datetime.datetime.now())),
+            'connections': lambda p: MacroResult('0'),
+            'speed-out': lambda p: MacroResult('0'),
+            'speed-in': lambda p: MacroResult('0'),
+            'total-out': lambda p: MacroResult('0'),
+            'total-in': lambda p: MacroResult('0'),
+            'total-downloads': lambda p: MacroResult('0'),
+            'total-uploads': lambda p: MacroResult('0'),
+            'number-addresses': lambda p: MacroResult('0'),
+            'number-addresses-downloading': lambda p: MacroResult('0'),
+            'build': lambda p: MacroResult('001'),
+            'sequencial': lambda p: MacroResult('0'),
+            'number-addresses-ever': lambda p: MacroResult('0'),
+            'port': lambda p: MacroResult('80'),
+            'folder': lambda p: MacroResult(p.request.path if p.request != None else ''),
+            'encoded-folder': lambda p: MacroResult(purify(p.request.path) if p.request != None else '')
+        }
         self.sections = object_from_dict({
-            '': TplSection('', ['public'], {})
+            '': TplSection('', ['public'], {
+                'files': lambda p: self.get_section('files', p, True, True),
+                'up': lambda p: self.get_section('up', p, True, True),
+                'upload-link': lambda p: self.get_section('upload-link', p, True, True),
+                'host': lambda p: MacroResult(p.request.host),
+                'number': lambda p: MacroResult(str(len(os.listdir(p.request.path_real)))),
+                'number-files': lambda p: MacroResult(str(len(list(filter(lambda x: os.path.isfile(x), os.listdir(p.request.path_real)))))),
+                'number-folders': lambda p: MacroResult(str(len(list(filter(lambda x: os.path.isdir(x), os.listdir(p.request.path_real)))))),
+                'total-size': lambda p: MacroResult('0'),
+                'total-kbytes': lambda p: MacroResult('0'),
+                'total-bytes': lambda p: MacroResult('0'),
+                'build-time': lambda p: MacroResult('0'),
+                'list': self.get_list,
+            }),
+            'files': TplSection('', [], {
+                'list': self.get_list,
+                'item-archive': lambda p: self.get_section('item-archive', p, True, True),
+            })
         })
         f = open(tpl_file, 'r', encoding='utf-8')
         c = '\n' + f.read()
@@ -85,12 +129,80 @@ class Interpreter():
                 continue
             self.handler[pair[0]] = MacroToCallable(pair[1], self)
         return
+    def get_list(self, param: UniParam):
+        _file = self.sections['file']
+        _folder = self.sections['folder']
+        _link = self.sections['link']
+        scanresult = os.scandir(param.request.path_real)
+        fileinfos = {   # for sorting
+            'name': [],
+            'ext': [],
+            'modified': [],
+            'added': [],
+            'size': []
+        }
+        links = []
+        with scanresult as i:
+            for e in i:
+                # if not (os.path.exists(e.path) and os.access(e.path, os.R_OK)):  # sometimes appears a non-exist or unreadable file
+                #     continue
+                stats = e.stat()
+                url = purify(param.request.path + e.name + ('' if e.is_file() else '/'))
+                name = e.name.replace('|', '&#124;')
+                last_modified = str(datetime.datetime.fromtimestamp(stats.st_mtime)).split('.')[0]
+                last_modified_dt = str(stats.st_mtime)
+                size = smartsize(stats.st_size)
+                param.symbols = concat_dict(param.symbols, {
+                    'item-url': lambda p: MacroResult(url),
+                    'item-name': lambda p: MacroResult(name),
+                    'item-modified': lambda p: MacroResult(last_modified),
+                    'item-modified-dt': lambda p: MacroResult(last_modified_dt),
+                    'item-size': lambda p: MacroResult(size),
+                    'item-comment': lambda p: MacroResult('')
+                })
+                links.append(self.parse_text(_file.content if e.is_file() else _folder.content, param).content)
+        links.sort()
+        return Page(''.join(links), 200)
+    def get_section(self, section_name: str, param: UniParam, do_parse=True, force=False) -> MacroResult:
+        """ Get a section from template. What this returns is a `MacroResult`.   
+            `section_name`: Name of section.  
+            `param`: `UniParam` for parsing macros and symbols.  
+            `do_parse`: Parse the content?
+        """
+        section: TplSection = self.sections[section_name]
+        if section == None:
+            return None
+        param.symbols = concat_dict(param.symbols, section.symbols)
+        return self.parse_text(section.content, param) if do_parse else MacroResult(section.content)
+    def get_page(self, page_name: str, param: PageParam) -> Page:
+        if page_name == '':
+            section = self.get_section('', param, True, True)
+            status = 200
+            if 'Location' in section.headers:
+                status = 302
+            return Page(section.content, status, section.headers, section.cookies)
+        elif page_name == 'list':
+            return self.get_list(UniParam([], interpreter=self, request=param.request))
+        elif page_name == 'error-page':
+            error_type = param.params[0]
+            error_status = param.params[1]
+            base_page = self.get_section('error-page', UniParam([], symbols={}, interpreter=self))
+            content = self.get_section(error_type, UniParam([], symbols={}, interpreter=self))
+            if 'Location' in base_page.headers or 'Location' in content.headers:
+                error_status = 302
+            headers = concat_dict(base_page.headers, content.headers)
+            cookies = concat_list(base_page.cookies, content.cookies)
+            return Page(replace_str(base_page.content, '%content%', content.content), error_status, headers, cookies)
+    def parse_symbols(self, text: str, param: UniParam, *symbols):
+        for i in symbols:
+            for j in i:
+                if '%%%s%%' % j in text:
+                    text = text.replace('%%%s%%' % j, i[j](param).content)
+        return text
     def parse_text(self, text: str, param: UniParam) -> MacroResult:
         """ Parse a string and apply symbols and macros
         """
-        for i in param.symbols:
-            if '%%%s%%' % i in text:
-                text = text.replace('%%%s%%' % i, param.symbols[i](UniParam([i], symbols=param.symbols, interpreter=self)))
+        text = self.parse_symbols(text, param, param.symbols, self.symbols)
         macro_level = 0
         quote_level = 0
         position = 0
@@ -141,9 +253,7 @@ class Interpreter():
                                 cookies.append(i)
                         macro_str = '{.' + '|'.join(full_macro) + '.}'
                         text = replace_str(text, macro_str, result.content)
-                        for i in param.symbols:
-                            if '%%%s%%' % i in text:
-                                text = text.replace('%%%s%%' % i, param.symbols[i](UniParam([i], symbols=param.symbols, interpreter=self)))
+                        text = self.parse_symbols(text, param, param.symbols, self.symbols)
                         length = len(text)
                         full_macro = ['']
                         break
@@ -196,6 +306,7 @@ class Interpreter():
         return params
     def exec_macro(self, params: list, param: UniParam) -> MacroResult:
         params = self.to_normal_macro(params)
-        result = self.handler[params[0]](UniParam(params, symbols=param.symbols, interpreter=self))
+        param.params = params
+        result = self.handler[params[0]](param)
         return result
     

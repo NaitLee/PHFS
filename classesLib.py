@@ -1,4 +1,6 @@
 
+from typing import Union
+
 class DictAsObject(dict):
     """ Let you use a dict like an object in JavaScript.  
         More to say, it's the ability to get a key with dot:
@@ -15,11 +17,36 @@ class DictAsObject(dict):
         self[key] = value
         return
 
+class PageParam():
+    """ Params for getting a page with `Interpreter.get_page`
+    """
+    params: list
+    request = None
+    def __init__(self, params: list, request):
+        self.params = params
+        self.request = request
+
+class Page():
+    """ A generated page.  
+        `content`: Text representation of page.  
+        `status`: Status code.  
+        `headers`: Headers to add, as a `dict`.  
+        `cookies`: Cookies to add, as a `list`.
+    """
+    content: str
+    status: int
+    headers: Union[dict, DictAsObject] = DictAsObject()
+    def __init__(self, content: str, status: int, headers=DictAsObject(), cookies=[]):
+        self.content = content
+        self.status = status
+        self.headers = headers
+        self.cookies = cookies
+
 class TplSection():
     """ A template section.  
         `content`: Text in this section.  
-        `params`: Params of this section. e.g. public, no log  
-        `symbols`: Symbols of this section, which is a `dict` with callable values
+        `params`: Params of this section. e.g. public, no log.  
+        `symbols`: Symbols of this section, which is a `dict` with callable values.
     """
     content: str
     params: list
@@ -33,11 +60,13 @@ class UniParam():
     """ Universal params.  
         `params`: A `list` of params, used by macros.  
         `symbols`: A `dict` with callable values, used by interpreter.  
-        `interpreter`: A `TplInterpreter` instance
+        `interpreter`: A `TplInterpreter` instance.  
+        `request`: The WSGI request.
     """
     params: list
     symbols: dict = {}
     interpreter = None
+    request = None
     def __init__(self, params: list, **kwargs):
         self.params = params
         for i in kwargs:
@@ -45,11 +74,11 @@ class UniParam():
 
 class MacroResult():
     """ Macro result after executing.  
-        `content`: Text representation of result  
+        `content`: Text representation of result.  
         `do_break`: Break macro execution?  
         `disconnect`: Disconnect this request?  
-        `headers`: Headers to add, as a `dict`  
-        `cookies`: Cookies to add, as a `list`
+        `headers`: Headers to add, as a `dict`.  
+        `cookies`: Cookies to add, as a `list`.
     """
     content: str
     do_break: bool = False

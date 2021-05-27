@@ -77,6 +77,12 @@ def concat_dict(*dicts):
         for j in i:
             new_dict[j] = i[j]
     return new_dict
+def concat_list(*lists):
+    new_list = []
+    for i in lists:
+        for j in i:
+            new_list.append(j)
+    return new_list
 
 def purify(s: str):
     """ uriencode input string, change \\ to / """

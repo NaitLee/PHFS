@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 import re
-from helpers import wildcard2re, read_ini
+from helpersLib import wildcard2re, read_ini
 
 mimedict = {}   # This is master one. Will be inited.
 

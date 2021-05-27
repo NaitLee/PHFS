@@ -37,6 +37,7 @@ class Commands():
             'length': self.length,
             'get': self.get,
             'match': self.match,
+            'regexp': self.regexp,
             '_unsupported': lambda param: MacroResult(','.join(param.params))
         }
     def __getitem__(self, key):
@@ -65,7 +66,8 @@ class Commands():
                 'bread-name': lambda p: MacroResult(bread_name),
                 'bread-url': lambda p: MacroResult(bread_url)
             })
-            c = param.interpreter.parse_text(t, symbols, param)
+            param.symbols = concat_dict(param.symbols, symbols)
+            c = param.interpreter.parse_text(t, param)
             r.append(c.content)
         return MacroResult(''.join(r))
     def time(self, param: UniParam):
@@ -134,5 +136,9 @@ class Commands():
         return MacroResult(self.FALSE)
     def match(self, param: UniParam):
         regex = wildcard2re(param.params[1])
+        result = re.match(regex, param.params[2], re.I | re.M)
+        return MacroResult(self._bool(result))
+    def regexp(self, param: UniParam):
+        regex = param.params[1]
         result = re.match(regex, param.params[2], re.I | re.M)
         return MacroResult(self._bool(result))
