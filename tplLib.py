@@ -134,14 +134,22 @@ class Interpreter():
         _folder = self.sections['folder']
         _link = self.sections['link']
         scanresult = os.scandir(param.request.path_real)
-        fileinfos = {   # for sorting
+        fileinfos_file = {   # for sorting
             'name': [],
             'ext': [],
             'modified': [],
             'added': [],
             'size': []
         }
-        links = []
+        fileinfos_folder = {   # for sorting
+            'name': [],
+            'ext': [],
+            'modified': [],
+            'added': [],
+            'size': []
+        }
+        links_file = []
+        links_folder = []
         with scanresult as i:
             for e in i:
                 # if not (os.path.exists(e.path) and os.access(e.path, os.R_OK)):  # sometimes appears a non-exist or unreadable file
@@ -152,41 +160,67 @@ class Interpreter():
                 last_modified = str(datetime.datetime.fromtimestamp(stats.st_mtime)).split('.')[0]
                 last_modified_dt = stats.st_mtime
                 size = stats.st_size
-                fileinfos['name'].append(name)
-                fileinfos['ext'].append(name.split('.')[-1])
-                fileinfos['modified'].append(last_modified_dt)
-                fileinfos['added'].append(last_modified_dt)
-                fileinfos['size'].append(size)
-                param.symbols = concat_dict(param.symbols, {
-                    'item-url': lambda p: MacroResult(url),
-                    'item-name': lambda p: MacroResult(name),
-                    'item-modified': lambda p: MacroResult(last_modified),
-                    'item-modified-dt': lambda p: MacroResult(str(last_modified_dt)),
-                    'item-size': lambda p: MacroResult(smartsize(size)),
-                    'item-comment': lambda p: MacroResult('')
-                })
-                links.append(self.parse_text(_file.content if e.is_file() else _folder.content, param).content)
+                if e.is_file():
+                    fileinfos_file['name'].append(name)
+                    fileinfos_file['ext'].append(name.split('.')[-1])
+                    fileinfos_file['modified'].append(last_modified_dt)
+                    fileinfos_file['added'].append(last_modified_dt)
+                    fileinfos_file['size'].append(size)
+                    param.symbols = concat_dict(param.symbols, {
+                        'item-url': lambda p: MacroResult(url),
+                        'item-name': lambda p: MacroResult(name),
+                        'item-modified': lambda p: MacroResult(last_modified),
+                        'item-modified-dt': lambda p: MacroResult(str(last_modified_dt)),
+                        'item-size': lambda p: MacroResult(smartsize(size)),
+                        'item-comment': lambda p: MacroResult('')
+                    })
+                    links_file.append(self.parse_text(_file.content, param).content)
+                else:
+                    fileinfos_folder['name'].append(name)
+                    fileinfos_folder['ext'].append(name.split('.')[-1])
+                    fileinfos_folder['modified'].append(last_modified_dt)
+                    fileinfos_folder['added'].append(last_modified_dt)
+                    fileinfos_folder['size'].append(size)
+                    param.symbols = concat_dict(param.symbols, {
+                        'item-url': lambda p: MacroResult(url),
+                        'item-name': lambda p: MacroResult(name),
+                        'item-modified': lambda p: MacroResult(last_modified),
+                        'item-modified-dt': lambda p: MacroResult(str(last_modified_dt)),
+                        'item-size': lambda p: MacroResult(smartsize(size)),
+                        'item-comment': lambda p: MacroResult('')
+                    })
+                    links_folder.append(self.parse_text(_folder.content, param).content)
+        sorting_comp = 'name'
+        sorting_func = lambda a, b: int(sorted([a, b]) != [a, b])
         if 'sort' in param.request.args:
             sort_by = param.request.args['sort']
             if sort_by == 'e':
-                links = sort(links, fileinfos['ext'], lambda a, b: int(sorted([a, b]) != [a, b]))
+                sorting_comp = 'ext'
+                sorting_func = lambda a, b: int(sorted([a, b]) != [a, b])
             elif sort_by == 'n':
-                links = sort(links, fileinfos['name'], lambda a, b: int(sorted([a, b]) != [a, b]))
+                sorting_comp = 'name'
+                sorting_func = lambda a, b: int(sorted([a, b]) != [a, b])
             elif sort_by == 't':
-                links = sort(links, fileinfos['modified'], lambda a, b: a - b)
+                sorting_comp = 'modified'
+                sorting_func = lambda a, b: a - b
             elif sort_by == 's':
-                links = sort(links, fileinfos['size'], lambda a, b: b - a)
+                sorting_comp = 'size'
+                sorting_func = lambda a, b: a - b
             elif sort_by == '!e':
-                links = sort(links, fileinfos['ext'], lambda a, b: int(sorted([a, b]) == [a, b]))
+                sorting_comp = 'ext'
+                sorting_func = lambda a, b: int(sorted([a, b]) == [a, b])
             elif sort_by == '!n':
-                links = sort(links, fileinfos['name'], lambda a, b: int(sorted([a, b]) == [a, b]))
+                sorting_comp = 'name'
+                sorting_func = lambda a, b: int(sorted([a, b]) == [a, b])
             elif sort_by == '!t':
-                links = sort(links, fileinfos['modified'], lambda a, b: b - a)
+                sorting_comp = 'modified'
+                sorting_func = lambda a, b: b - a
             elif sort_by == '!s':
-                links = sort(links, fileinfos['size'], lambda a, b: a - b)
-        else:
-            links = sort(links, fileinfos['name'], lambda a, b: int(sorted([a, b]) != [a, b]))
-        return Page(''.join(links), 200)
+                sorting_comp = 'size'
+                sorting_func = lambda a, b: b - a
+        links_folder = sort(links_folder, fileinfos_folder[sorting_comp], sorting_func)
+        links_file = sort(links_file, fileinfos_file[sorting_comp], sorting_func)
+        return Page(''.join(links_folder) + ''.join(links_file), 200)
     def get_section(self, section_name: str, param: UniParam, do_parse=True, force=False) -> MacroResult:
         """ Get a section from template. What this returns is a `MacroResult`.   
             `section_name`: Name of section.  
