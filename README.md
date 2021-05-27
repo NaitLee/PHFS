@@ -9,12 +9,12 @@
 
 👏 Features that works:
 - Filelist, download
+- Sorting files
 - Some macros, special:alias
 - Translations, special:strings
 
 🕳 Features that doesn't work:
 - Virtual File System
-- Sorting
 - Uploading
 - Accounts, Login, Ban, Limits, ...
 

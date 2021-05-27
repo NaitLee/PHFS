@@ -3,6 +3,22 @@
 import urllib
 from classesLib import DictAsObject
 
+def sort(l, m, f):
+    """ Bubble sort.  
+        `l`: the list to be sorted.  
+        `m`: the list for comparison.  
+        `f`: the function for comparison, takes 2 arguments from `m`, returns a positive or negative number.
+    """
+    l = list(l)
+    m = list(m)
+    m_len = len(m)
+    for i in range(m_len):
+        for j in range(i + 1, m_len):
+            if f(m[j], m[i]) <= 0:
+                l[j], l[i] = l[i], l[j]
+                m[j], m[i] = m[i], m[j]
+    return l
+
 def object_from_dict(d: dict):
     """ Get a `DictAsObject` from a normal `dict`
     """

@@ -3,7 +3,7 @@ import datetime, os
 
 from classesLib import TplSection, UniParam, MacroResult, MacroToCallable, PageParam, Page
 from scriptLib import Commands
-from helpersLib import replace_str, read_ini, object_from_dict, concat_dict, concat_list, purify, smartsize
+from helpersLib import replace_str, read_ini, object_from_dict, concat_dict, concat_list, purify, smartsize, sort
 
 class MacroNotClosedProperly(Exception):
     """ Exception: Macro not closed properly """
@@ -150,18 +150,42 @@ class Interpreter():
                 url = purify(param.request.path + e.name + ('' if e.is_file() else '/'))
                 name = e.name.replace('|', '&#124;')
                 last_modified = str(datetime.datetime.fromtimestamp(stats.st_mtime)).split('.')[0]
-                last_modified_dt = str(stats.st_mtime)
-                size = smartsize(stats.st_size)
+                last_modified_dt = stats.st_mtime
+                size = stats.st_size
+                fileinfos['name'].append(name)
+                fileinfos['ext'].append(name.split('.')[-1])
+                fileinfos['modified'].append(last_modified_dt)
+                fileinfos['added'].append(last_modified_dt)
+                fileinfos['size'].append(size)
                 param.symbols = concat_dict(param.symbols, {
                     'item-url': lambda p: MacroResult(url),
                     'item-name': lambda p: MacroResult(name),
                     'item-modified': lambda p: MacroResult(last_modified),
-                    'item-modified-dt': lambda p: MacroResult(last_modified_dt),
-                    'item-size': lambda p: MacroResult(size),
+                    'item-modified-dt': lambda p: MacroResult(str(last_modified_dt)),
+                    'item-size': lambda p: MacroResult(smartsize(size)),
                     'item-comment': lambda p: MacroResult('')
                 })
                 links.append(self.parse_text(_file.content if e.is_file() else _folder.content, param).content)
-        links.sort()
+        if 'sort' in param.request.args:
+            sort_by = param.request.args['sort']
+            if sort_by == 'e':
+                links = sort(links, fileinfos['ext'], lambda a, b: int(sorted([a, b]) != [a, b]))
+            elif sort_by == 'n':
+                links = sort(links, fileinfos['name'], lambda a, b: int(sorted([a, b]) != [a, b]))
+            elif sort_by == 't':
+                links = sort(links, fileinfos['modified'], lambda a, b: a - b)
+            elif sort_by == 's':
+                links = sort(links, fileinfos['size'], lambda a, b: b - a)
+            elif sort_by == '!e':
+                links = sort(links, fileinfos['ext'], lambda a, b: int(sorted([a, b]) == [a, b]))
+            elif sort_by == '!n':
+                links = sort(links, fileinfos['name'], lambda a, b: int(sorted([a, b]) == [a, b]))
+            elif sort_by == '!t':
+                links = sort(links, fileinfos['modified'], lambda a, b: b - a)
+            elif sort_by == '!s':
+                links = sort(links, fileinfos['size'], lambda a, b: a - b)
+        else:
+            links = sort(links, fileinfos['name'], lambda a, b: int(sorted([a, b]) != [a, b]))
         return Page(''.join(links), 200)
     def get_section(self, section_name: str, param: UniParam, do_parse=True, force=False) -> MacroResult:
         """ Get a section from template. What this returns is a `MacroResult`.   
