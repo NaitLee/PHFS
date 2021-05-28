@@ -16,6 +16,7 @@ mimesheetA = {
     '*.mpeg;*.mpg;*.mpe': 'video/mpeg',
     '*.mp3': 'audio/mpeg',
     '*.avi': 'video/x-msvideo',
+    '*.tar': 'application/x-tar',
     '*.txt': 'text/plain',
     '*.css': 'text/css',
     '*.js':  'text/javascript'

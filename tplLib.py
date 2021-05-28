@@ -1,5 +1,5 @@
 
-import datetime, os
+import datetime, os, random
 
 from classesLib import TplSection, UniParam, MacroResult, MacroToCallable, PageParam, Page
 from scriptLib import Commands
@@ -241,6 +241,39 @@ class Interpreter():
             return Page(section.content, status, section.headers, section.cookies)
         elif page_name == 'list':
             return self.get_list(UniParam([], interpreter=self, request=param.request))
+        elif page_name == 'upload':
+            status = 200
+            section = self.get_section('upload', UniParam([], interpreter=self, request=param.request), True, True)
+            if section == None:
+                return self.get_page('error-page', PageParam(['not found', 404], param.request))
+            if 'Location' in section.headers:
+                status = 302
+            return Page(section.content, status, section.headers, section.cookies)
+        elif page_name == 'upload-result':
+            status = 200
+            section = self.get_section('upload-results', UniParam([], interpreter=self, request=param.request), True, True)
+            _success = self.get_section('upload-success', UniParam([], interpreter=self, request=param.request), False, True)
+            _failed = self.get_section('upload-failed', UniParam([], interpreter=self, request=param.request), False, True)
+            if section == None:
+                return self.get_page('error-page', PageParam(['not found', 404], param.request))
+            if 'Location' in section.headers:
+                status = 302
+            uploaded_files = []
+            upload_result = param.params[0]
+            for i in upload_result:
+                result = upload_result[i]
+                if result[0] == True:
+                    uploaded_files.append(self.parse_text(_success.content, UniParam([], symbols={
+                        'item-name': lambda p: MacroResult(i),
+                        'item-size': lambda p: MacroResult(smartsize(os.stat(param.request.path_real + i).st_size)),
+                        'speed': lambda p: MacroResult('0')
+                    }, interpreter=self, request=param.request)).content)
+                else:
+                    uploaded_files.append(self.parse_text(_failed.content, UniParam([], symbols={
+                        'item-name': lambda p: MacroResult(i),
+                        'reason': lambda p: MacroResult(result[1])
+                    }, interpreter=self, request=param.request)).content)
+            return Page(section.content.replace('%uploaded-files%', ''.join(uploaded_files)), status, section.headers, section.cookies)
         elif page_name == 'error-page':
             error_type = param.params[0]
             error_status = param.params[1]

@@ -133,7 +133,10 @@ class Commands():
         return MacroResult(str(len(param.params[1])))
     def get(self, param: UniParam):
         # TODO
-        return MacroResult(self.FALSE)
+        result = False
+        if param.params[1] == 'can upload':
+            result = True
+        return MacroResult(self._bool(result))
     def match(self, param: UniParam):
         regex = wildcard2re(param.params[1])
         result = re.match(regex, param.params[2], re.I | re.M)
