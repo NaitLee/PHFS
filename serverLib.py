@@ -12,6 +12,8 @@ class PTIRequest(Request):
         super().__init__(environ)
         self.path_virtual = path_virtual
         self.path_real = path_real
+        self.path_virtual_dir = os.path.dirname(path_virtual)
+        self.path_real_dir = os.path.dirname(path_real)
 
 class PHFSServer():
     interpreter = Interpreter()

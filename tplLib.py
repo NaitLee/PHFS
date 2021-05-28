@@ -1,5 +1,5 @@
 
-import datetime, os, random
+import datetime, os, random, shutil
 
 from classesLib import TplSection, UniParam, MacroResult, MacroToCallable, PageParam, Page
 from scriptLib import Commands
@@ -41,8 +41,8 @@ class Interpreter():
             'sequencial': lambda p: MacroResult('0'),
             'number-addresses-ever': lambda p: MacroResult('0'),
             'port': lambda p: MacroResult('80'),
-            'folder': lambda p: MacroResult(p.request.path if p.request != None else ''),
-            'encoded-folder': lambda p: MacroResult(purify(p.request.path) if p.request != None else '')
+            'folder': lambda p: MacroResult(p.request.path_virtual_dir if p.request != None else ''),
+            'encoded-folder': lambda p: MacroResult(purify(p.request.path_virtual_dir) if p.request != None else '')
         }
         self.sections = object_from_dict({
             '': TplSection('', ['public'], {
@@ -50,7 +50,7 @@ class Interpreter():
                 'up': lambda p: self.get_section('up', p, True, True),
                 'upload-link': lambda p: self.get_section('upload-link', p, True, True),
                 'host': lambda p: MacroResult(p.request.host),
-                'number': lambda p: MacroResult(str(len(os.listdir(p.request.path_real)))),
+                'number': lambda p: MacroResult(str(len(os.listdir(p.request.path_real_dir)))),
                 'number-files': lambda p: MacroResult(str(len(list(filter(lambda x: os.path.isfile(x), os.listdir(p.request.path_real)))))),
                 'number-folders': lambda p: MacroResult(str(len(list(filter(lambda x: os.path.isdir(x), os.listdir(p.request.path_real)))))),
                 'total-size': lambda p: MacroResult('0'),
@@ -62,6 +62,9 @@ class Interpreter():
             'files': TplSection('', [], {
                 'list': self.get_list,
                 'item-archive': lambda p: self.get_section('item-archive', p, True, True),
+            }),
+            'upload': TplSection('', [], {
+                'diskfree': lambda p: MacroResult(smartsize(shutil.disk_usage(p.request.path_real_dir).free)),
             })
         })
         f = open(tpl_file, 'r', encoding='utf-8')
@@ -133,7 +136,7 @@ class Interpreter():
         _file = self.sections['file']
         _folder = self.sections['folder']
         _link = self.sections['link']
-        scanresult = os.scandir(param.request.path_real)
+        scanresult = os.scandir(param.request.path_real_dir)
         fileinfos_file = {   # for sorting
             'name': [],
             'ext': [],
@@ -169,6 +172,7 @@ class Interpreter():
                     param.symbols = concat_dict(param.symbols, {
                         'item-url': lambda p: MacroResult(url),
                         'item-name': lambda p: MacroResult(name),
+                        'item-ext': lambda p: MacroResult(name.split('.')[-1]),
                         'item-modified': lambda p: MacroResult(last_modified),
                         'item-modified-dt': lambda p: MacroResult(str(last_modified_dt)),
                         'item-size': lambda p: MacroResult(smartsize(size)),
@@ -184,6 +188,7 @@ class Interpreter():
                     param.symbols = concat_dict(param.symbols, {
                         'item-url': lambda p: MacroResult(url),
                         'item-name': lambda p: MacroResult(name),
+                        'item-ext': lambda p: MacroResult(name.split('.')[-1]),
                         'item-modified': lambda p: MacroResult(last_modified),
                         'item-modified-dt': lambda p: MacroResult(str(last_modified_dt)),
                         'item-size': lambda p: MacroResult(smartsize(size)),
@@ -397,6 +402,8 @@ class Interpreter():
         return params
     def exec_macro(self, params: list, param: UniParam) -> MacroResult:
         params = self.to_normal_macro(params)
+        if params[-1].split('/')[-1] == params[0] and len(params) > 2:
+            params[-1] = '/'.join(params[-1].split('/')[0:-1])
         param.params = params
         result = self.handler[params[0]](param)
         return result

@@ -1,7 +1,7 @@
 
 from classesLib import MacroResult, UniParam
 from helpersLib import concat_dict, wildcard2re
-import datetime, time, re
+import datetime, time, re, os
 
 class Commands():
     TRUE = '1'
@@ -23,6 +23,7 @@ class Commands():
             'if not': self.macro_if_not,
             'not': self.macro_not,
             'breadcrumbs': self.breadcrumbs,
+            'switch': self.macro_switch,
             'break': self.macro_break,
             'replace': self.replace,
             'translation': self.translation,
@@ -38,6 +39,7 @@ class Commands():
             'get': self.get,
             'match': self.match,
             'regexp': self.regexp,
+            'filesize': self.filesize,
             '_unsupported': lambda param: MacroResult(','.join(param.params))
         }
     def __getitem__(self, key):
@@ -53,6 +55,11 @@ class Commands():
         return param.interpreter.get_section('style', param, True, True)
     def sym_user(self, param: UniParam):
         return MacroResult('')
+    def filesize(self, param: UniParam):
+        size = 0
+        if os.path.exists(param.request.path_real):
+            os.stat(param.request.path_real).st_size
+        return MacroResult(str(size))
     def breadcrumbs(self, param: UniParam):
         t = param.interpreter.unquote(param.params[1], param, False).content
         r = []
@@ -71,18 +78,16 @@ class Commands():
             r.append(c.content)
         return MacroResult(''.join(r))
     def time(self, param: UniParam):
-        format_ = 'yyyy-mm-dd hh:MM:ss'
-        when = 0
+        time_format = 'yyyy-mm-dd hh:MM:ss'
+        when = time.time()
         result = ''
         for i in param.params:
             if i.startswith('format='):
-                format_ = i[7:]
+                time_format = i[7:]
             if i.startswith('when='):
                 when = float(i[5:])
-        if when == 0:
-            when = time.time()
         f = datetime.datetime.fromtimestamp(when)
-        result = format_.replace('c', str(f)).replace('yyyy', '%04d' % f.year).replace('mm', '%02d' % f.month).replace('dd', '%02d' % f.day).replace('hh', '%02d' % f.hour).replace('MM', '%02d' % f.minute).replace('ss', '%02d' % f.second)
+        result = time_format.replace('c', str(f)).replace('yyyy', '%04d' % f.year).replace('mm', '%02d' % f.month).replace('dd', '%02d' % f.day).replace('hh', '%02d' % f.hour).replace('MM', '%02d' % f.minute).replace('ss', '%02d' % f.second)
         return MacroResult(result)
     def macro_if(self, param: UniParam):
         param.params.append('')
@@ -145,3 +150,16 @@ class Commands():
         regex = param.params[1]
         result = re.match(regex, param.params[2], re.I | re.M)
         return MacroResult(self._bool(result))
+    def macro_switch(self, param: UniParam):
+        key = param.params[1]
+        splitter = param.params[2]
+        conditions = {}
+        _current = ''
+        for i, j in enumerate(param.params[3:-1]):
+            if i % 2 == 0:
+                _current = j
+            else:
+                for k in _current.split(splitter):
+                    conditions[k] = j
+        default = param.params[-1]
+        return MacroResult(conditions.get(key, default))
