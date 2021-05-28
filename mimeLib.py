@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 import re
-from helpers import wildcard2re, read_ini
+from helpersLib import wildcard2re, read_ini
 
 mimedict = {}   # This is master one. Will be inited.
 
@@ -16,6 +16,7 @@ mimesheetA = {
     '*.mpeg;*.mpg;*.mpe': 'video/mpeg',
     '*.mp3': 'audio/mpeg',
     '*.avi': 'video/x-msvideo',
+    '*.tar': 'application/x-tar',
     '*.txt': 'text/plain',
     '*.css': 'text/css',
     '*.js':  'text/javascript'

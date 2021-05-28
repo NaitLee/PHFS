@@ -1,6 +1,8 @@
-import sys
-from tplLib import TplInterpreter
-from classesLib import MacroParams
+#!/usr/bin/python3
 
-itp = TplInterpreter()
-print(itp.parse_text(sys.argv[1], {}, MacroParams([])).content)
+import sys
+from tplLib import Interpreter
+from classesLib import UniParam
+
+itp = Interpreter()
+print(itp.parse_text(sys.argv[1], UniParam([], interpreter=itp)).content)
