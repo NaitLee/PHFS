@@ -1,0 +1,95 @@
+body {
+    font-family: 'Georgia', 'Cambria', 'Cochin', 'Georgia', serif;
+    font-size: small;
+    margin: 0;
+    overflow-x: hidden;
+}
+
+a:link, a:hover, a:active, a:visited {
+    color: #775511;
+}
+
+
+.part0 {
+    background-image: linear-gradient(180deg, #dae0d2 0%, #dae0d2 80%, white 100%);
+    height: 8em;
+}
+.part0 h1 {
+    margin: 0;
+    position: relative;
+    top: 8px;
+    left: 1em;
+    font-variant: small-caps;
+    letter-spacing: 0.1em;
+    font-weight: normal;
+    font-size: 28pt;
+}
+.part0 p {
+    position: relative;
+    left: 6em;
+    top: -1em;
+    font-style: italic;
+    color: gray;
+}
+.part0 nav {
+    display: none;
+}
+
+.part1 {
+    color: #333333;
+    overflow-x: auto;
+    width: 800px;
+    margin: auto;
+}
+.part1 .chunk {
+    margin: 1em 1em 2em 1em;
+    width: 400px;
+}
+.part1 .chunk.description {
+    position: relative;
+    left: 360px;
+    width: 400px;
+    top: -120px;
+    height: 80px;
+    overflow-y: visible;
+}
+.part1 .chunk.center {
+    margin: 1em auto 2em 4em;
+    text-align: center;
+}
+.part1 h2 {
+    color: #777777;
+    font-size: 150%;
+    margin: 5px 0;
+    letter-spacing: 0.3em;
+    font-weight: normal;
+}
+.part1 p {
+    margin: 0;
+}
+.part1 ul {
+    padding: 0 20px;
+}
+.part1 li {
+    list-style-type: square;
+}
+
+.blank {
+    height: 10em;
+}
+
+footer {
+    font-size: smaller;
+    color: gray;
+}
+footer p:target {
+    background-color: #fbe54e;
+}
+
+.part2 {
+    color: #666666;
+    text-align: center;
+}
+.part2 hr {
+    border: 1px solid gray;
+}
