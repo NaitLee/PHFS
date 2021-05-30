@@ -37,6 +37,8 @@ Template choices:
 ## Files
 
 - `_test.py`: Run a server for testing, debugging. It also contains werkzeug's reload feature.
-- `_test_macro.py`: Run & test a macro, by entering as argv1 in commandline.
 - `_run_simple.py`: Run a simple server. Have no debug feature, but works on [pypy](https://www.pypy.org/) on aarch64 architecture.
+- `hfs.ini`: Some configs, like port, are here. Currently you can set a base path as the root dir of served pages.
+
+- `_test_macro.py`: Run & test a macro, by entering as argv1 in commandline.
 - `cgi.cgi`: For being used as a CGI application with Apache, Nginx etc.

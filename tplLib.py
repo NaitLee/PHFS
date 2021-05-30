@@ -4,6 +4,7 @@ import datetime, os, random, shutil
 from classesLib import TplSection, UniParam, MacroResult, MacroToCallable, PageParam, Page
 from scriptLib import Commands
 from helpersLib import replace_str, read_ini, object_from_dict, concat_dict, concat_list, purify, smartsize, sort
+from cfgLib import Config
 
 class MacroNotClosedProperly(Exception):
     """ Exception: Macro not closed properly """
@@ -25,7 +26,7 @@ class Interpreter():
             'login-link': lambda p: self.get_section('login-link', p, True, True),
             'loggedin': lambda p: self.get_section('loggedin', p, True, True),
             'ip': lambda p: MacroResult(p.request.host),
-            'version': lambda p: MacroResult('0.0.1'),
+            'version': lambda p: MacroResult(Config.version),
             'timestamp': lambda p: MacroResult(str(datetime.datetime.now())),
             'uptime': lambda p: MacroResult(str(datetime.datetime.now())),
             'connections': lambda p: MacroResult('0'),
@@ -37,10 +38,10 @@ class Interpreter():
             'total-uploads': lambda p: MacroResult('0'),
             'number-addresses': lambda p: MacroResult('0'),
             'number-addresses-downloading': lambda p: MacroResult('0'),
-            'build': lambda p: MacroResult('001'),
+            'build': lambda p: MacroResult(Config.build),
             'sequencial': lambda p: MacroResult('0'),
             'number-addresses-ever': lambda p: MacroResult('0'),
-            'port': lambda p: MacroResult('80'),
+            'port': lambda p: MacroResult(Config.port),
             'folder': lambda p: MacroResult(p.request.path_virtual_dir if p.request != None else ''),
             'encoded-folder': lambda p: MacroResult(purify(p.request.path_virtual_dir) if p.request != None else '')
         }

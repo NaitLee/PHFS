@@ -4,6 +4,7 @@ from werkzeug.wrappers import Request, Response
 from werkzeug.utils import send_file
 from tplLib import Interpreter
 from classesLib import UniParam, Page, PageParam
+from cfgLib import Config
 
 class PTIRequest(Request):
     path_virtual: str = '/'
@@ -27,7 +28,7 @@ class PHFSServer():
         response = Response('bad request', 400)
         page = Page('', 400)
         path = request_initial.path
-        resource = path
+        resource = Config.base_path + path
         request = PTIRequest(environ, path, resource)
         if request.method == 'GET':
             levels = path.split('/')
@@ -57,14 +58,14 @@ class PHFSServer():
                     tmp.seek(0)     # Read at start
                     response = send_file(tmp, environ, mimetype=mimeLib.getmime('*.tar'))
             elif resource != None:
-                if path[-1] == '/' and request.path_real[-1] == '/':
-                    page = self.interpreter.get_page('', UniParam([], interpreter=self.interpreter, request=request))
-                    response = Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime('*.html'))
-                else:
-                    if os.path.exists(request.path_real) and os.path.isfile(request.path_real):
-                        response = send_file(request.path_real, environ)
+                if os.path.exists(resource):
+                    if os.path.isdir(resource):
+                        page = self.interpreter.get_page('', UniParam([], interpreter=self.interpreter, request=request))
+                        response = Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime('*.html'))
                     else:
-                        response = self.not_found_response(request)
+                        response = send_file(resource, environ)
+                else:
+                    response = self.not_found_response(request)
             else:
                 response = self.not_found_response(request)
         elif request.method == 'POST':
@@ -72,7 +73,7 @@ class PHFSServer():
             for i in request.files:
                 single_file = request.files[i]
                 try:
-                    single_file.save(request.path_real + single_file.filename)
+                    single_file.save(resource + single_file.filename)
                     upload_result[single_file.filename] = (True, '')
                 except Exception as e:
                     upload_result[single_file.filename] = (False, str(e))

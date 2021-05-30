@@ -3,3 +3,4 @@ __pycache__
 .vscode
 hfs*.tpl
 __test.py
+~override
