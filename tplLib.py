@@ -1,5 +1,5 @@
 
-import datetime, os, random, shutil
+import datetime, os, random, shutil, time
 
 from classesLib import TplSection, UniParam, MacroResult, MacroToCallable, PageParam, Page
 from scriptLib import Commands
@@ -20,6 +20,7 @@ class Interpreter():
     """
     def __init__(self, tpl_file='hfs.tpl'):
         self.handler = Commands()
+        self.uptime_start = time.time()
         self.symbols = {
             'style': self.handler.sym_style,
             'user': self.handler.sym_user,
@@ -28,7 +29,7 @@ class Interpreter():
             'ip': lambda p: MacroResult(p.request.host),
             'version': lambda p: MacroResult(Config.version),
             'timestamp': lambda p: MacroResult(str(datetime.datetime.now())),
-            'uptime': lambda p: MacroResult(str(datetime.datetime.now())),
+            'uptime': lambda p: MacroResult(str(datetime.timedelta(seconds=round(time.time() - self.uptime_start)))),
             'connections': lambda p: MacroResult('0'),
             'speed-out': lambda p: MacroResult('0'),
             'speed-in': lambda p: MacroResult('0'),
@@ -46,6 +47,7 @@ class Interpreter():
             'encoded-folder': lambda p: MacroResult(purify(p.request.path_virtual_dir) if p.request != None else '')
         }
         self.sections = object_from_dict({
+            '_empty': TplSection('', [], {}),
             '': TplSection('', ['public'], {
                 'files': lambda p: self.get_section('files', p, True, True),
                 'up': lambda p: self.get_section('up', p, True, True),
@@ -57,8 +59,8 @@ class Interpreter():
                 'total-size': lambda p: MacroResult('0'),
                 'total-kbytes': lambda p: MacroResult('0'),
                 'total-bytes': lambda p: MacroResult('0'),
-                'build-time': lambda p: MacroResult('0'),
                 'list': self.get_list,
+                'folder-item-comment': lambda p: MacroResult('')
             }),
             'files': TplSection('', [], {
                 'list': self.get_list,
@@ -76,17 +78,17 @@ class Interpreter():
             t = i.split(']\n', 1)
             if len(t) <= 1:
                 continue
+            plus = False
+            prepend = False
+            if t[0][0:1] == '+':
+                plus = True
+                t[0] = t[0][1:]
+            elif t[0][0:1] == '^':
+                prepend = True
+                t[0] = t[0][1:]
             p = t[0].split('|')
             for j in p[0].split('='):
                 j = j.strip()
-                plus = False
-                prepend = False
-                if j[0:1] == '+':
-                    plus = True
-                    j = j[1:]
-                elif j[0:1] == '^':
-                    prepend = True
-                    j = j[1:]
                 if j not in self.sections:
                     self.sections[j] = TplSection('', [], {})
                 if plus:
@@ -95,31 +97,9 @@ class Interpreter():
                     self.sections[j].content = t[1] + self.sections[j].content
                 else:
                     self.sections[j].content = t[1]
-                    self.sections[j].params = p
-        f = open(tpl_file, 'r', encoding='utf-8')
-        c = '\n' + f.read()
-        f.close()
-        s = c.split('\n[')
-        for i in s:
-            t = i.split(']\n', 1)
-            if len(t) <= 1:
-                continue
-            p = t[0].split('|')
-            for j in p[0].split('='):
-                j = j.strip()
-                plus = False
-                if j[0:1] == '+':
-                    plus = True
-                    j = j[1:]
-                if j not in self.sections:
-                    self.sections[j] = TplSection('', [], {})
-                if plus:
-                    self.sections[j].content += t[1]
-                else:
-                    self.sections[j].content = t[1]
-                    self.sections[j].params = p
+                    self.sections[j].params = p[1:]
         self.translations = {}
-        for i in self.sections['special:strings'].content.split('\n'):
+        for i in self.sections.get('special:strings', self.sections['_empty']).content.split('\n'):
             pair = i.split('=', 1)
             if len(pair) < 2:
                 continue
@@ -127,16 +107,16 @@ class Interpreter():
         alias_from_txt = read_ini('alias.txt')
         for i in alias_from_txt:
             self.handler[i] = MacroToCallable(alias_from_txt[i], self)
-        for i in self.sections['special:alias'].content.split('\n'):
+        for i in self.sections.get('special:alias', self.sections['_empty']).content.split('\n'):
             pair = i.split('=', 1)
             if len(pair) < 2:
                 continue
             self.handler[pair[0]] = MacroToCallable(pair[1], self)
         return
     def get_list(self, param: UniParam):
-        _file = self.sections['file']
-        _folder = self.sections['folder']
-        _link = self.sections['link']
+        _file = self.sections.get('file', self.sections['_empty'])
+        _folder = self.sections.get('folder', self.sections['_empty'])
+        _link = self.sections.get('link', self.sections['_empty'])
         scanresult = os.scandir(param.request.path_real_dir)
         fileinfos_file = {   # for sorting
             'name': [],
@@ -177,7 +157,8 @@ class Interpreter():
                         'item-modified': lambda p: MacroResult(last_modified),
                         'item-modified-dt': lambda p: MacroResult(str(last_modified_dt)),
                         'item-size': lambda p: MacroResult(smartsize(size)),
-                        'item-comment': lambda p: MacroResult('')
+                        'item-comment': lambda p: MacroResult(''),
+                        'item-icon': lambda p: MacroResult('')
                     })
                     links_file.append(self.parse_text(_file.content, param).content)
                 else:
@@ -193,35 +174,37 @@ class Interpreter():
                         'item-modified': lambda p: MacroResult(last_modified),
                         'item-modified-dt': lambda p: MacroResult(str(last_modified_dt)),
                         'item-size': lambda p: MacroResult(smartsize(size)),
-                        'item-comment': lambda p: MacroResult('')
+                        'item-comment': lambda p: MacroResult(''),
+                        'item-icon': lambda p: MacroResult('')
                     })
                     links_folder.append(self.parse_text(_folder.content, param).content)
         sorting_comp = 'name'
         sorting_func = lambda a, b: int(sorted([a, b]) != [a, b])
         if 'sort' in param.request.args:
             sort_by = param.request.args['sort']
-            if sort_by == 'e':
+            rev = 'rev' in param.request.args
+            if sort_by == 'e' and not rev:
                 sorting_comp = 'ext'
                 sorting_func = lambda a, b: int(sorted([a, b]) != [a, b])
-            elif sort_by == 'n':
+            elif sort_by == 'n' and not rev:
                 sorting_comp = 'name'
                 sorting_func = lambda a, b: int(sorted([a, b]) != [a, b])
-            elif sort_by == 't':
+            elif sort_by == 't' and not rev:
                 sorting_comp = 'modified'
                 sorting_func = lambda a, b: a - b
-            elif sort_by == 's':
+            elif sort_by == 's' and not rev:
                 sorting_comp = 'size'
                 sorting_func = lambda a, b: a - b
-            elif sort_by == '!e':
+            elif sort_by == '!e' or (sort_by == 'e' and rev):
                 sorting_comp = 'ext'
                 sorting_func = lambda a, b: int(sorted([a, b]) == [a, b])
-            elif sort_by == '!n':
+            elif sort_by == '!n' or (sort_by == 'n' and rev):
                 sorting_comp = 'name'
                 sorting_func = lambda a, b: int(sorted([a, b]) == [a, b])
-            elif sort_by == '!t':
+            elif sort_by == '!t' or (sort_by == 't' and rev):
                 sorting_comp = 'modified'
                 sorting_func = lambda a, b: b - a
-            elif sort_by == '!s':
+            elif sort_by == '!s' or (sort_by == 's' and rev):
                 sorting_comp = 'size'
                 sorting_func = lambda a, b: b - a
         links_folder = sort(links_folder, fileinfos_folder[sorting_comp], sorting_func)
@@ -233,7 +216,7 @@ class Interpreter():
             `param`: `UniParam` for parsing macros and symbols.  
             `do_parse`: Parse the content?
         """
-        section: TplSection = self.sections[section_name]
+        section: TplSection = self.sections.get(section_name, None)
         if section == None:
             return None
         param.symbols = concat_dict(param.symbols, section.symbols)
@@ -241,6 +224,7 @@ class Interpreter():
     def get_page(self, page_name: str, param: PageParam) -> Page:
         if page_name == '':
             section = self.get_section('', param, True, True)
+            section.content = replace_str(section.content, '%build-time%', str(round(time.time() - param.request.build_time_start, 3)))
             status = 200
             if 'Location' in section.headers:
                 status = 302
@@ -285,10 +269,10 @@ class Interpreter():
             error_status = param.params[1]
             base_page = self.get_section('error-page', UniParam([], symbols={}, interpreter=self))
             content = self.get_section(error_type, UniParam([], symbols={}, interpreter=self))
-            if 'Location' in base_page.headers or 'Location' in content.headers:
-                error_status = 302
             headers = concat_dict(base_page.headers, content.headers)
             cookies = concat_list(base_page.cookies, content.cookies)
+            if 'Location' in headers:
+                error_status = 302
             return Page(replace_str(base_page.content, '%content%', content.content), error_status, headers, cookies)
     def parse_symbols(self, text: str, param: UniParam, *symbols):
         for i in symbols:
@@ -309,9 +293,7 @@ class Interpreter():
         full_macro = ['']
         broken = False
         disconnect = False
-        headers = {
-            'Server': 'PHFS/0.0.1'
-        }
+        headers = {}
         cookies = []
         while position < length:
             last_macro_at = position
@@ -405,6 +387,7 @@ class Interpreter():
         params = self.to_normal_macro(params)
         if params[-1].split('/')[-1] == params[0] and len(params) > 2:
             params[-1] = '/'.join(params[-1].split('/')[0:-1])
+        # params = list(map(lambda x: x.strip(), params))
         param.params = params
         result = self.handler[params[0]](param)
         return result

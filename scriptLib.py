@@ -40,6 +40,9 @@ class Commands():
             'match': self.match,
             'regexp': self.regexp,
             'filesize': self.filesize,
+            'urlvar': self.urlvar,
+            'postvar': self.postvar,
+            'cut': self.cut,
             '_unsupported': lambda param: MacroResult(','.join(param.params))
         }
     def __getitem__(self, key):
@@ -55,6 +58,21 @@ class Commands():
         return param.interpreter.get_section('style', param, True, True)
     def sym_user(self, param: UniParam):
         return MacroResult('')
+    def urlvar(self, param: UniParam):
+        return MacroResult(param.request.args.get(param.params[1], self.FALSE))
+    def postvar(self, param: UniParam):
+        return MacroResult(param.request.args.get(param.params[1], self.FALSE))
+    def cut(self, param: UniParam):
+        if len(param.params[1]) == 0:
+            param.params[1] = '0'
+        if len(param.params[2]) == 0:
+            param.params[2] = '0'
+        start = int(param.params[1])
+        end = int(param.params[2])
+        if start < 0 and end < 0 and start > end:
+            start, end = end, start
+        string = param.params[3]
+        return MacroResult(string[start:end])
     def filesize(self, param: UniParam):
         size = 0
         if os.path.exists(param.request.path_real):
@@ -139,7 +157,7 @@ class Commands():
     def get(self, param: UniParam):
         # TODO
         result = False
-        if param.params[1] == 'can upload':
+        if param.params[1] in ('can upload', 'can access'):
             result = True
         return MacroResult(self._bool(result))
     def match(self, param: UniParam):

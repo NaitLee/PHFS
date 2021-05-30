@@ -1,5 +1,5 @@
 
-import os, io, tarfile, tempfile, mimeLib
+import os, io, tarfile, tempfile, mimeLib, time
 from werkzeug.wrappers import Request, Response
 from werkzeug.utils import send_file
 from tplLib import Interpreter
@@ -15,6 +15,8 @@ class PTIRequest(Request):
         self.path_real = path_real
         self.path_virtual_dir = os.path.dirname(path_virtual)
         self.path_real_dir = os.path.dirname(path_real)
+        self.build_time_start = time.time()
+        
 
 class PHFSServer():
     interpreter = Interpreter()
