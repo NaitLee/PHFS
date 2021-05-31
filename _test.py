@@ -1,8 +1,8 @@
 #!/usr/bin/python3
 import os
-from cfgLib import Config
-
 os.chdir(os.path.dirname(__file__) or '.')
+
+from cfgLib import Config
 
 from serverLib import PHFSServer
 from werkzeug.serving import run_simple

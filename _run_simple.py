@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 import os
-
 os.chdir(os.path.dirname(__file__) or '.')
 
 from serverLib import PHFSServer
