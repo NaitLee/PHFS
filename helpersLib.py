@@ -19,6 +19,15 @@ def sort(l, m, f):
                 m[j], m[i] = m[i], m[j]
     return l
 
+def get_dirname(path):
+    """ Alternate of os.path.dirname(), which works as we want
+    """
+    levels = path.split('/')
+    if levels[-1] == '':   # is a dir
+        return path
+    else:
+        return '/'.join(levels[:-1])
+
 def object_from_dict(d: dict):
     """ Get a `DictAsObject` from a normal `dict`
     """

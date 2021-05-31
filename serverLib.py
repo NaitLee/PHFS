@@ -5,6 +5,7 @@ from werkzeug.utils import send_file
 from tplLib import Interpreter
 from classesLib import UniParam, Page, PageParam
 from cfgLib import Config
+from helpersLib import get_dirname
 
 class PTIRequest(Request):
     path_virtual: str = '/'
@@ -13,8 +14,8 @@ class PTIRequest(Request):
         super().__init__(environ)
         self.path_virtual = path_virtual
         self.path_real = path_real
-        self.path_virtual_dir = os.path.dirname(path_virtual)
-        self.path_real_dir = os.path.dirname(path_real)
+        self.path_virtual_dir = get_dirname(path_virtual)
+        self.path_real_dir = get_dirname(path_real)
         self.build_time_start = time.time()
         
 
