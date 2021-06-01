@@ -15,7 +15,7 @@
 - 文件列表，下载
 - 排序文件，打包下载
 - 一些宏，`special:alias`
-- 上传（无权限限制）
+- 上传
 - 本地化，`special:strings`
 
 🕳 仍不可用的功能：
@@ -23,6 +23,20 @@
 - 搜索
 - 虚拟文件系统（VFS）
 - 账户、登录、封禁、限制、……
+
+🍉 支持的平台:
+
+- 所有 Python 3.7 支持的 x86, x64 平台：
+  - Windows 7 及以上
+  - GNU/Linux, *nix, *BSD
+  - ……
+
+- 一些 ARM 平台:
+  - Android，使用 [QPython 3L](https://www.qpython.org/)
+  - ARM 开发板，如树莓派，使用 [PyPy](https://www.pypy.org/)
+  - ……
+
+- 可能更多！
 
 ## 开发者信息
 
@@ -34,18 +48,25 @@
 
 2. 选择一个用于 2.4 的 HFS 模板，重命名为 `hfs.tpl` 并放入 repo。
 
-3. 在 `hfs.ini` 中配置端口与基文件夹。
+3. 在 `hfs.ini` 中配置端口、基文件夹、允许上传的文件夹。
 
 4. 要开始一个服务器，用 `python3` 打开 `_run_simple.py`；要进行开发工作，打开 `_test.py`；要用于 Apache 等作为 CGI 服务器，使用 `cgi.cgi`，方法请查询网络。
 
-模板选项：
+可用的一些模板：
 
 - [HFS 默认模板](https://github.com/rejetto/hfs2/raw/master/default.tpl)
 - [Takeback](https://github.com/NaitLee/Takeback-HFS-Template/releases/latest)
 - [Throwback](http://rejetto.com/forum/index.php?topic=12055.0)
 - [Stripes](http://rejetto.com/forum/index.php?topic=13415.0)
 
-## 文件
+### 注记
+
+- 要在 Android QPython 3L 上使用：
+  - 将 repo 放置于 `/sdcard/qpython/projects3`，确保文件夹层级正确。
+  - 将 `_run_simple.py` 重命名为 `main.py`。
+  - 在 QPython 3L app 内，进入 Programs，在 Projects 标签，选择 repo 名称并 Run。
+
+### 文件
 
 - `_test.py`: 开始一个服务器用于开发、调试。它包含 werkzeug 的重载功能。
 - `_run_simple.py`: 开始一个简单服务器。它可用于 aarch64 架构的 [pypy](https://www.pypy.org/)。

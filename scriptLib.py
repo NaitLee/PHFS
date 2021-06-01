@@ -1,7 +1,8 @@
 
-from classesLib import MacroResult, UniParam
-from helpersLib import concat_dict, wildcard2re
 import datetime, time, re, os
+from classesLib import MacroResult, UniParam
+from helpersLib import concat_dict, wildcard2re, if_upload_allowed_in
+from cfgLib import Config
 
 class Commands():
     TRUE = '1'
@@ -157,8 +158,11 @@ class Commands():
     def get(self, param: UniParam):
         # TODO
         result = False
-        if param.params[1] in ('can upload', 'can access'):
+        if param.params[1] in ('can access'):
             result = True
+        elif param.params[1] in ('can upload'):
+            if if_upload_allowed_in(param.request.path_real, Config):
+                result = True
         return MacroResult(self._bool(result))
     def match(self, param: UniParam):
         regex = wildcard2re(param.params[1])

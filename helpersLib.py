@@ -124,3 +124,11 @@ def replacepairs(s: str, *args):
 def trimiterable(i):
     """ Maps an iterable, trims strings inside """
     return list(map(lambda s: s.strip(), i))
+
+def if_upload_allowed_in(path, cfg):
+    upload_allowed = False
+    for i in cfg.upload_allowed_paths.split('|'):
+        if path.startswith(i):
+            upload_allowed = True
+            break
+    return upload_allowed

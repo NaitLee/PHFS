@@ -49,7 +49,7 @@ class Interpreter():
         self.sections = object_from_dict({
             '_empty': TplSection('', [], {}),
             '': TplSection('', ['public'], {
-                'files': lambda p: self.get_section('files', p, True, True),
+                'files': lambda p: self.get_page('files', p),
                 'up': lambda p: self.get_section('up', p, True, True),
                 'upload-link': lambda p: self.get_section('upload-link', p, True, True),
                 'host': lambda p: MacroResult(p.request.host),
@@ -134,50 +134,50 @@ class Interpreter():
         }
         links_file = []
         links_folder = []
-        with scanresult as i:
-            for e in i:
-                # if not (os.path.exists(e.path) and os.access(e.path, os.R_OK)):  # sometimes appears a non-exist or unreadable file
-                #     continue
-                stats = e.stat()
-                url = purify(param.request.path + e.name + ('' if e.is_file() else '/'))
-                name = e.name.replace('|', '&#124;')
-                last_modified = str(datetime.datetime.fromtimestamp(stats.st_mtime)).split('.')[0]
-                last_modified_dt = stats.st_mtime
-                size = stats.st_size
-                if e.is_file():
-                    fileinfos_file['name'].append(name)
-                    fileinfos_file['ext'].append(name.split('.')[-1])
-                    fileinfos_file['modified'].append(last_modified_dt)
-                    fileinfos_file['added'].append(last_modified_dt)
-                    fileinfos_file['size'].append(size)
-                    param.symbols = concat_dict(param.symbols, {
-                        'item-url': lambda p: MacroResult(url),
-                        'item-name': lambda p: MacroResult(name),
-                        'item-ext': lambda p: MacroResult(name.split('.')[-1]),
-                        'item-modified': lambda p: MacroResult(last_modified),
-                        'item-modified-dt': lambda p: MacroResult(str(last_modified_dt)),
-                        'item-size': lambda p: MacroResult(smartsize(size)),
-                        'item-comment': lambda p: MacroResult(''),
-                        'item-icon': lambda p: MacroResult('')
-                    })
-                    links_file.append(self.parse_text(_file.content, param).content)
-                else:
-                    fileinfos_folder['name'].append(name)
-                    fileinfos_folder['ext'].append(name.split('.')[-1])
-                    fileinfos_folder['modified'].append(last_modified_dt)
-                    fileinfos_folder['added'].append(last_modified_dt)
-                    fileinfos_folder['size'].append(size)
-                    param.symbols = concat_dict(param.symbols, {
-                        'item-url': lambda p: MacroResult(url),
-                        'item-name': lambda p: MacroResult(name),
-                        'item-ext': lambda p: MacroResult(name.split('.')[-1]),
-                        'item-modified': lambda p: MacroResult(last_modified),
-                        'item-modified-dt': lambda p: MacroResult(str(last_modified_dt)),
-                        'item-size': lambda p: MacroResult(smartsize(size)),
-                        'item-comment': lambda p: MacroResult(''),
-                        'item-icon': lambda p: MacroResult('')
-                    })
-                    links_folder.append(self.parse_text(_folder.content, param).content)
+        for e in scanresult:
+            # if not (os.path.exists(e.path) and os.access(e.path, os.R_OK)):  # sometimes appears a non-exist or unreadable file
+            #     continue
+            stats = e.stat()
+            url = purify(param.request.path + e.name + ('' if e.is_file() else '/'))
+            name = e.name.replace('|', '&#124;')
+            last_modified = str(datetime.datetime.fromtimestamp(stats.st_mtime)).split('.')[0]
+            last_modified_dt = stats.st_mtime
+            size = stats.st_size
+            if e.is_file():
+                fileinfos_file['name'].append(name)
+                fileinfos_file['ext'].append(name.split('.')[-1])
+                fileinfos_file['modified'].append(last_modified_dt)
+                fileinfos_file['added'].append(last_modified_dt)
+                fileinfos_file['size'].append(size)
+                param.symbols = concat_dict(param.symbols, {
+                    'item-url': lambda p: MacroResult(url),
+                    'item-name': lambda p: MacroResult(name),
+                    'item-ext': lambda p: MacroResult(name.split('.')[-1]),
+                    'item-modified': lambda p: MacroResult(last_modified),
+                    'item-modified-dt': lambda p: MacroResult(str(last_modified_dt)),
+                    'item-size': lambda p: MacroResult(smartsize(size)),
+                    'item-comment': lambda p: MacroResult(''),
+                    'item-icon': lambda p: MacroResult('')
+                })
+                links_file.append(self.parse_text(_file.content, param).content)
+            else:
+                fileinfos_folder['name'].append(name)
+                fileinfos_folder['ext'].append(name.split('.')[-1])
+                fileinfos_folder['modified'].append(last_modified_dt)
+                fileinfos_folder['added'].append(last_modified_dt)
+                fileinfos_folder['size'].append(size)
+                param.symbols = concat_dict(param.symbols, {
+                    'item-url': lambda p: MacroResult(url),
+                    'item-name': lambda p: MacroResult(name),
+                    'item-ext': lambda p: MacroResult(name.split('.')[-1]),
+                    'item-modified': lambda p: MacroResult(last_modified),
+                    'item-modified-dt': lambda p: MacroResult(str(last_modified_dt)),
+                    'item-size': lambda p: MacroResult(smartsize(size)),
+                    'item-comment': lambda p: MacroResult(''),
+                    'item-icon': lambda p: MacroResult('')
+                })
+                links_folder.append(self.parse_text(_folder.content, param).content)
+        scanresult.close()
         sorting_comp = 'name'
         sorting_func = lambda a, b: int(sorted([a, b]) != [a, b])
         if 'sort' in param.request.args:
@@ -214,40 +214,41 @@ class Interpreter():
         """ Get a section from template. What this returns is a `MacroResult`.   
             `section_name`: Name of section.  
             `param`: `UniParam` for parsing macros and symbols.  
-            `do_parse`: Parse the content?
+            `do_parse`: Parse the content?  
+            `force`: Get this section even if not public?
         """
         section: TplSection = self.sections.get(section_name, None)
         if section == None:
             return None
         param.symbols = concat_dict(param.symbols, section.symbols)
         return self.parse_text(section.content, param) if do_parse else MacroResult(section.content)
+    def section_to_page(self, section_name, param):
+        section = self.get_section(section_name, param, True, True)
+        if section == None:
+            return self.get_page('error-page', PageParam(['not found', 404], param.request))
+        status = 200
+        if 'Location' in section.headers:
+            status = 302
+        return Page(section.content, status, section.headers, section.cookies)
     def get_page(self, page_name: str, param: PageParam) -> Page:
         if page_name == '':
-            section = self.get_section('', param, True, True)
-            section.content = replace_str(section.content, '%build-time%', str(round(time.time() - param.request.build_time_start, 3)))
-            status = 200
-            if 'Location' in section.headers:
-                status = 302
-            return Page(section.content, status, section.headers, section.cookies)
+            page = self.section_to_page('', param)
+            page.content = replace_str(page.content, '%build-time%', str(round(time.time() - param.request.build_time_start, 3)))
+            return page
+        elif page_name == 'files':
+            if len(os.listdir(param.request.path_real_dir)) == 0:
+                nofiles = self.get_section('nofiles', param, True, True)
+                if nofiles != None:
+                    return Page(nofiles.content, 200)
+            return self.section_to_page('files', param)
         elif page_name == 'list':
             return self.get_list(UniParam([], interpreter=self, request=param.request))
         elif page_name == 'upload':
-            status = 200
-            section = self.get_section('upload', UniParam([], interpreter=self, request=param.request), True, True)
-            if section == None:
-                return self.get_page('error-page', PageParam(['not found', 404], param.request))
-            if 'Location' in section.headers:
-                status = 302
-            return Page(section.content, status, section.headers, section.cookies)
+            return self.section_to_page('upload', param)
         elif page_name == 'upload-result':
-            status = 200
-            section = self.get_section('upload-results', UniParam([], interpreter=self, request=param.request), True, True)
+            page = self.section_to_page('upload-result', param)
             _success = self.get_section('upload-success', UniParam([], interpreter=self, request=param.request), False, True)
             _failed = self.get_section('upload-failed', UniParam([], interpreter=self, request=param.request), False, True)
-            if section == None:
-                return self.get_page('error-page', PageParam(['not found', 404], param.request))
-            if 'Location' in section.headers:
-                status = 302
             uploaded_files = []
             upload_result = param.params[0]
             for i in upload_result:
@@ -263,7 +264,8 @@ class Interpreter():
                         'item-name': lambda p: MacroResult(i),
                         'reason': lambda p: MacroResult(result[1])
                     }, interpreter=self, request=param.request)).content)
-            return Page(section.content.replace('%uploaded-files%', ''.join(uploaded_files)), status, section.headers, section.cookies)
+            page.content = replace_str(page.content, '%uploaded-files%', ''.join(uploaded_files))
+            return page
         elif page_name == 'error-page':
             error_type = param.params[0]
             error_status = param.params[1]

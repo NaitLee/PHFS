@@ -5,7 +5,7 @@ from werkzeug.utils import send_file
 from tplLib import Interpreter
 from classesLib import UniParam, Page, PageParam
 from cfgLib import Config
-from helpersLib import get_dirname
+from helpersLib import get_dirname, if_upload_allowed_in
 
 class PTIRequest(Request):
     path_virtual: str = '/'
@@ -47,7 +47,7 @@ class PHFSServer():
             elif levels[-1][0:1] == '~':
                 # Command
                 command = levels[-1][1:]
-                if command == 'upload':
+                if command == 'upload' and if_upload_allowed_in(request.path_real, Config):
                     page = self.interpreter.get_page('upload', UniParam([], interpreter=self.interpreter, request=request))
                     response = Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime('*.html'))
                 elif command == 'folder.tar':
@@ -60,6 +60,8 @@ class PHFSServer():
                     tar.close()     # Pointer is at the end of file
                     tmp.seek(0)     # Read at start
                     response = send_file(tmp, environ, mimetype=mimeLib.getmime('*.tar'))
+                else:
+                    response = self.not_found_response(request)
             elif resource != None:
                 if os.path.exists(resource):
                     if os.path.isdir(resource):
@@ -72,16 +74,19 @@ class PHFSServer():
             else:
                 response = self.not_found_response(request)
         elif request.method == 'POST':
-            upload_result = {}
-            for i in request.files:
-                single_file = request.files[i]
-                try:
-                    single_file.save(resource + single_file.filename)
-                    upload_result[single_file.filename] = (True, '')
-                except Exception as e:
-                    upload_result[single_file.filename] = (False, str(e))
-            page = self.interpreter.get_page('upload-result', PageParam([upload_result], request))
-            response = Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime('*.html'))
+            if not if_upload_allowed_in(request.path_real, Config):
+                response = Response('forbidden', 403)
+            else:
+                upload_result = {}
+                for i in request.files:
+                    single_file = request.files[i]
+                    try:
+                        single_file.save(resource + single_file.filename)
+                        upload_result[single_file.filename] = (True, '')
+                    except Exception as e:
+                        upload_result[single_file.filename] = (False, str(e))
+                page = self.interpreter.get_page('upload-result', PageParam([upload_result], request))
+                response = Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime('*.html'))
         return response(environ, start_response)
     def __call__(self, environ, start_response):
         return self.wsgi(environ, start_response)
