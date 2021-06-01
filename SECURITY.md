@@ -10,4 +10,4 @@
 
 Though this project is still in development, any security related things shall not be missed.
 
-If found one, please report a security issue via e-mail to `naitli@foxmail.com`.
+If found, please report any security issues to me via e-mail at `naitli@foxmail.com`.
