@@ -1,16 +1,16 @@
 [English](./README.md) | [简体中文](./README-zh-CN.md)
 
 # PHFS
-💫 *Python3 implementation of rejetto [HTTP File Server](https://github.com/rejetto/hfs2)~*
+💫 This is a Python3 implementation of rejetto's [HTTP File Server](https://github.com/rejetto/hfs2)~*
 
 ----
 🏗 Under construction...
 
-🎉 Please make this project grow. **Any contributions are welcome!**
+🎉 Please help make this project grow. **All contributions are welcome!**
 
 ----
 
-👏 Features that works:
+👏 Features that work:
 
 - Filelist, download
 - Sorting files, Archiving
@@ -18,7 +18,7 @@
 - Upload (No permission restriction)
 - Translations, `special:strings`
 
-🕳 Features that doesn't work:
+🕳 Features that don't work:
 
 - Search
 - Virtual File System
@@ -27,9 +27,9 @@
 
 ## Developer Notes
 
-👀 This project is working halfly now, but yet not for production use.
+👀 This project is only half working, it is not yet ready for production use. Testing only.
 
-If you are interested in testing this project, please:
+If you are interested in testing this project, please do the following:
 
 1. Install [Werkzeug](https://pypi.org/project/Werkzeug/) by either using `pip` or placing the folder `Werkzeug-(version)/src/werkzeug` from downloaded archive to cloned repo.
 
@@ -49,7 +49,7 @@ Template choices:
 ## Files
 
 - `_test.py`: Run a server for testing, debugging. It also contains werkzeug's reload feature.
-- `_run_simple.py`: Run a simple server. Have no debug feature, but works on [pypy](https://www.pypy.org/) on aarch64 architecture.
+- `_run_simple.py`: Run a simple server. Has no debug feature, but works on [pypy](https://www.pypy.org/) on aarch64 architecture.
 - `hfs.ini`: Some configs, like port, are here. Currently you can set a base path as the root dir of served pages.
 
 - `_test_macro.py`: Run & test a macro, by entering as argv1 in commandline.
