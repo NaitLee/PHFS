@@ -132,3 +132,10 @@ def if_upload_allowed_in(path, cfg):
             upload_allowed = True
             break
     return upload_allowed
+
+def is_filename_illegal(filename):
+    illegal_chars = [chr(x) for x in range(32)] + ['/', '\\', ':', '?', '*', '"', '<', '>', '|']
+    for i in illegal_chars:
+        if i in filename:
+            return True
+    return False

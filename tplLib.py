@@ -223,7 +223,8 @@ class Interpreter():
         param.symbols = concat_dict(param.symbols, section.symbols)
         return self.parse_text(section.content, param) if do_parse else MacroResult(section.content)
     def section_to_page(self, section_name, param):
-        section = self.get_section(section_name, param, True, True)
+        uni_param = UniParam(param.params, interpreter=self, request=param.request)
+        section = self.get_section(section_name, uni_param, True, True)
         if section == None:
             return self.get_page('error-page', PageParam(['not found', 404], param.request))
         status = 200
@@ -245,8 +246,8 @@ class Interpreter():
             return self.get_list(UniParam([], interpreter=self, request=param.request))
         elif page_name == 'upload':
             return self.section_to_page('upload', param)
-        elif page_name == 'upload-result':
-            page = self.section_to_page('upload-result', param)
+        elif page_name == 'upload-results':
+            page = self.section_to_page('upload-results', param)
             _success = self.get_section('upload-success', UniParam([], interpreter=self, request=param.request), False, True)
             _failed = self.get_section('upload-failed', UniParam([], interpreter=self, request=param.request), False, True)
             uploaded_files = []
