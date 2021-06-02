@@ -16,11 +16,11 @@
 - Sorting files, Archiving
 - Some macros, `special:alias`
 - Upload
+- Search
 - Translations, `special:strings`
 
 🕳 Features that don't work:
 
-- Search
 - Virtual File System
 - File actions
 - Accounts, Login, Ban, Limits, ...

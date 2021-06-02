@@ -1,11 +1,11 @@
 
-import os, io, tarfile, tempfile, mimeLib, time
+import os, io, tarfile, tempfile, mimeLib, time, re
 from werkzeug.wrappers import Request, Response
 from werkzeug.utils import send_file
 from tplLib import Interpreter
 from classesLib import UniParam, Page, PageParam
 from cfgLib import Config
-from helpersLib import get_dirname, if_upload_allowed_in, is_filename_illegal
+from helpersLib import get_dirname, if_upload_allowed_in, is_filename_illegal, wildcard2re
 
 class PTIRequest(Request):
     path_virtual: str = '/'
@@ -36,7 +36,8 @@ class PHFSServer():
         path = request_initial.path
         resource = Config.base_path + path
         request = PTIRequest(environ, path, resource)
-        param = UniParam([], interpreter=self.interpreter, request=request)
+        uni_param = UniParam([], interpreter=self.interpreter, request=request)
+        page_param = PageParam([], request)
         levels = path.split('/')
         if request.method == 'POST':
             # File upload
@@ -64,13 +65,69 @@ class PHFSServer():
             mode = request.args['mode']
             if mode == 'section':
                 section_name = request.args.get('id', '')
-                page = self.interpreter.section_to_page(section_name, param)
+                page = self.interpreter.section_to_page(section_name, page_param)
                 response = Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime(section_name))
+            return response(environ, start_response)
+        elif 'search' in request.args:
+            # Search, with re.findall
+            directory = request.path_real_dir
+            if not os.path.isdir(directory):
+                response = self.not_found_response(request)
+                return response(environ, start_response)
+            pattern = re.compile(wildcard2re(request.args['search']), re.I)
+            recursive = 'recursive' in request.args
+            items_folder = []
+            items_file = []
+            if recursive:
+                for dirpath, dirnames, filenames in os.walk(directory):
+                    for i in dirnames:
+                        if re.findall(pattern, i):
+                            items_folder.append(os.path.join(dirpath, i))
+                    for i in filenames:
+                        if re.findall(pattern, i):
+                            items_file.append(os.path.join(dirpath, i))
+            else:
+                for i in os.scandir(directory):
+                    if re.findall(pattern, i.name):
+                        if i.is_dir:
+                            items_folder.append(i.path)
+                        else:
+                            items_file.append(i.path)
+            page = self.interpreter.get_page('', PageParam([items_folder + items_file, True], request))
+            response = Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime('*.html'))
+            return response(environ, start_response)
+        elif 'filter' in request.args:
+            # Filter, with re.fullmatch
+            directory = request.path_real_dir
+            if not os.path.isdir(directory):
+                response = self.not_found_response(request)
+                return response(environ, start_response)
+            pattern = re.compile(wildcard2re(request.args['filter']), re.I)
+            recursive = 'recursive' in request.args
+            items_folder = []
+            items_file = []
+            if recursive:
+                for dirpath, dirnames, filenames in os.walk(directory):
+                    for i in dirnames:
+                        if re.fullmatch(pattern, i):
+                            items_folder.append(os.path.join(dirpath, i))
+                    for i in filenames:
+                        if re.fullmatch(pattern, i):
+                            items_file.append(os.path.join(dirpath, i))
+            else:
+                for i in os.scandir(directory):
+                    if re.fullmatch(pattern, i.name):
+                        if i.is_dir:
+                            items_folder.append(i.path)
+                        else:
+                            items_file.append(i.path)
+            page = self.interpreter.get_page('', PageParam([items_folder + items_file, True], request))
+            response = Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime('*.html'))
             return response(environ, start_response)
         elif path[0:2] == '/~':
             # Section, ~ at root
             section_name = path[2:]
-            section = self.interpreter.get_section(section_name, param, True, False)
+            section = self.interpreter.get_section(section_name, uni_param, True, False)
             if section == None:
                 response = self.not_found_response(request)
             else:
@@ -81,7 +138,7 @@ class PHFSServer():
             # Command
             command = levels[-1][1:]
             if command == 'upload' and if_upload_allowed_in(request.path_real, Config):
-                page = self.interpreter.get_page('upload', param)
+                page = self.interpreter.get_page('upload', page_param)
                 response = Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime('*.html'))
             elif command == 'folder.tar':
                 tmp = tempfile.TemporaryFile(mode='w+b')
@@ -100,7 +157,7 @@ class PHFSServer():
             # Filelist or send file or 404
             if os.path.exists(resource):
                 if os.path.isdir(resource):
-                    page = self.interpreter.get_page('', param)
+                    page = self.interpreter.get_page('', page_param)
                     response = Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime('*.html'))
                 else:
                     response = send_file(resource, environ)

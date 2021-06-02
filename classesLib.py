@@ -1,4 +1,5 @@
 
+import os
 from typing import Union
 
 class DictAsObject(dict):
@@ -41,6 +42,25 @@ class Page():
         self.status = status
         self.headers = headers
         self.cookies = cookies
+
+class ItemEntry():
+    """ A class that acts like `os.DirEntry`, but with more.  
+        `path`: File/Folder path.  
+        `path_real_dir`: as like this in `PTIRequest`, used for cutting path to url
+    """
+    def __init__(self, path, path_real_dir):
+        levels = path.split('/')
+        self.name = levels[-2] if path[-1] == '/' else levels[-1]
+        self.path = path
+        self.url = path[len(path_real_dir):]
+        self._is_dir = os.path.isdir(path)
+        self._stat = os.stat(path)
+    def is_file(self):
+        return not self._is_dir
+    def is_dir(self):
+        return self._is_dir
+    def stat(self):
+        return self._stat
 
 class TplSection():
     """ A template section.  

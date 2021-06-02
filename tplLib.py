@@ -1,7 +1,7 @@
 
 import datetime, os, random, shutil, time
 
-from classesLib import TplSection, UniParam, MacroResult, MacroToCallable, PageParam, Page
+from classesLib import TplSection, UniParam, MacroResult, MacroToCallable, PageParam, Page, ItemEntry
 from scriptLib import Commands
 from helpersLib import replace_str, read_ini, object_from_dict, concat_dict, concat_list, purify, smartsize, sort
 from cfgLib import Config
@@ -66,6 +66,7 @@ class Interpreter():
                 'list': self.get_list,
                 'item-archive': lambda p: self.get_section('item-archive', p, True, True),
             }),
+            'nofiles': TplSection('', [], {}),
             'upload': TplSection('', [], {
                 'diskfree': lambda p: MacroResult(smartsize(shutil.disk_usage(p.request.path_real_dir).free)),
             })
@@ -114,10 +115,24 @@ class Interpreter():
             self.handler[pair[0]] = MacroToCallable(pair[1], self)
         return
     def get_list(self, param: UniParam):
+        """ Get filelist, called by symbol `%list%`.  
+            `param`: a `UniParam` used to parse symbols.  
+            `extra_entries` as `param.params[0]`: Extra file/folder entries to show.  
+            `extra_only` as `param.params[1]`: Display extra entries only?
+        """
+        extra_entries = []
+        extra_only = False
+        if len(param.params) > 1:
+            extra_entries = param.params[0]
+            extra_only = param.params[1]
         _file = self.sections.get('file', self.sections['_empty'])
         _folder = self.sections.get('folder', self.sections['_empty'])
         _link = self.sections.get('link', self.sections['_empty'])
-        scanresult = os.scandir(param.request.path_real_dir)
+        scanresult = []
+        real_dir = param.request.path_real_dir
+        if not extra_only:
+            scanresult = [ItemEntry(real_dir + x, real_dir) for x in os.listdir(real_dir)]
+        scanresult += [ItemEntry(x, real_dir) for x in extra_entries]
         fileinfos_file = {   # for sorting
             'name': [],
             'ext': [],
@@ -138,7 +153,7 @@ class Interpreter():
             # if not (os.path.exists(e.path) and os.access(e.path, os.R_OK)):  # sometimes appears a non-exist or unreadable file
             #     continue
             stats = e.stat()
-            url = purify(param.request.path + e.name + ('' if e.is_file() else '/'))
+            url = purify(e.url + ('' if e.is_file() and e.url[-1] != '/' else '/'))
             name = e.name.replace('|', '&#124;')
             last_modified = str(datetime.datetime.fromtimestamp(stats.st_mtime)).split('.')[0]
             last_modified_dt = stats.st_mtime
@@ -177,7 +192,6 @@ class Interpreter():
                     'item-icon': lambda p: MacroResult('')
                 })
                 links_folder.append(self.parse_text(_folder.content, param).content)
-        scanresult.close()
         sorting_comp = 'name'
         sorting_func = lambda a, b: int(sorted([a, b]) != [a, b])
         if 'sort' in param.request.args:
@@ -222,7 +236,7 @@ class Interpreter():
             return None
         param.symbols = concat_dict(param.symbols, section.symbols)
         return self.parse_text(section.content, param) if do_parse else MacroResult(section.content)
-    def section_to_page(self, section_name, param):
+    def section_to_page(self, section_name, param: PageParam):
         uni_param = UniParam(param.params, interpreter=self, request=param.request)
         section = self.get_section(section_name, uni_param, True, True)
         if section == None:
@@ -232,6 +246,7 @@ class Interpreter():
             status = 302
         return Page(section.content, status, section.headers, section.cookies)
     def get_page(self, page_name: str, param: PageParam) -> Page:
+        uni_param = UniParam([], interpreter=self, request=param.request)
         if page_name == '':
             page = self.section_to_page('', param)
             page.content = replace_str(page.content, '%build-time%', str(round(time.time() - param.request.build_time_start, 3)))
@@ -239,17 +254,16 @@ class Interpreter():
         elif page_name == 'files':
             if len(os.listdir(param.request.path_real_dir)) == 0:
                 nofiles = self.get_section('nofiles', param, True, True)
-                if nofiles != None:
-                    return Page(nofiles.content, 200)
+                return Page(nofiles.content, 200)
             return self.section_to_page('files', param)
         elif page_name == 'list':
-            return self.get_list(UniParam([], interpreter=self, request=param.request))
+            return self.get_list(uni_param)
         elif page_name == 'upload':
             return self.section_to_page('upload', param)
         elif page_name == 'upload-results':
             page = self.section_to_page('upload-results', param)
-            _success = self.get_section('upload-success', UniParam([], interpreter=self, request=param.request), False, True)
-            _failed = self.get_section('upload-failed', UniParam([], interpreter=self, request=param.request), False, True)
+            _success = self.get_section('upload-success', uni_param, False, True)
+            _failed = self.get_section('upload-failed', uni_param, False, True)
             uploaded_files = []
             upload_result = param.params[0]
             for i in upload_result:
