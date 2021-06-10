@@ -21,6 +21,7 @@ class Interpreter():
     def __init__(self, tpl_file='hfs.tpl'):
         self.handler = Commands()
         self.uptime_start = time.time()
+        self.cached_pages = {}
         self.symbols = {
             'style': self.handler.sym_style,
             'user': self.handler.sym_user,
@@ -120,18 +121,23 @@ class Interpreter():
             `extra_entries` as `param.params[0]`: Extra file/folder entries to show.  
             `extra_only` as `param.params[1]`: Display extra entries only?
         """
+        real_dir = param.request.path_real_dir
+        filelist = []
         extra_entries = []
         extra_only = False
         if len(param.params) > 1:
             extra_entries = param.params[0]
             extra_only = param.params[1]
-        _file = self.sections.get('file', self.sections['_empty'])
-        _folder = self.sections.get('folder', self.sections['_empty'])
-        _link = self.sections.get('link', self.sections['_empty'])
-        scanresult = []
-        real_dir = param.request.path_real_dir
         if not extra_only:
-            scanresult = [ItemEntry(real_dir + x, real_dir) for x in os.listdir(real_dir)]
+            filelist = os.listdir(real_dir)
+        filelist += extra_entries
+        if Config.cache_page:
+            cache = self.cached_pages.get(str(filelist), None)
+            if cache != None:
+                return Page(cache, 200)
+        scanresult = []
+        if not extra_only:
+            scanresult = [ItemEntry(real_dir + x, real_dir) for x in filelist]
         scanresult += [ItemEntry(x, real_dir) for x in extra_entries]
         fileinfos_file = {   # for sorting
             'name': [],
@@ -147,6 +153,9 @@ class Interpreter():
             'added': [],
             'size': []
         }
+        _file = self.sections.get('file', self.sections['_empty'])
+        _folder = self.sections.get('folder', self.sections['_empty'])
+        _link = self.sections.get('link', self.sections['_empty'])
         links_file = []
         links_folder = []
         for e in scanresult:
@@ -223,7 +232,10 @@ class Interpreter():
                 sorting_func = lambda a, b: b - a
         links_folder = sort(links_folder, fileinfos_folder[sorting_comp], sorting_func)
         links_file = sort(links_file, fileinfos_file[sorting_comp], sorting_func)
-        return Page(''.join(links_folder) + ''.join(links_file), 200)
+        page_content = ''.join(links_folder) + ''.join(links_file)
+        if Config.cache_page:
+            self.cached_pages[str(filelist)] = page_content
+        return Page(page_content, 200)
     def get_section(self, section_name: str, param: UniParam, do_parse=True, force=False) -> MacroResult:
         """ Get a section from template. What this returns is a `MacroResult`.   
             `section_name`: Name of section.  

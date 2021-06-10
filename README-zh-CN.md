@@ -44,7 +44,7 @@
 
 如果您有兴趣测试，可以：
 
-1. 安装 [Werkzeug](https://pypi.org/project/Werkzeug/)。可以使用 `pip`，或者将下载的压缩包中的文件夹 `Werkzeug-(版本)/src/werkzeug` 放入 clone 的 repo 内。
+1. 安装 [Werkzeug](https://pypi.org/project/Werkzeug/#files)。可以使用 `pip`，或者将下载的压缩包中的文件夹 `Werkzeug-(版本)/src/werkzeug` 放入 clone 的 repo 内。
 
 2. 选择一个用于 2.4 的 HFS 模板，重命名为 `hfs.tpl` 并放入 repo。
 

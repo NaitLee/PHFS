@@ -45,7 +45,7 @@
 
 If you are interested in testing this project, please do the following:
 
-1. Install [Werkzeug](https://pypi.org/project/Werkzeug/) by either using `pip` or placing the folder `Werkzeug-(version)/src/werkzeug` from downloaded archive to cloned repo.
+1. Install [Werkzeug](https://pypi.org/project/Werkzeug/#files) by either using `pip` or placing the folder `Werkzeug-(version)/src/werkzeug` from downloaded archive to cloned repo.
 
 2. Pick a HFS template (for HFS 2.4), rename it to `hfs.tpl` and place into cloned repo.
 
