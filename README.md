@@ -47,11 +47,13 @@ If you are interested in testing this project, please do the following:
 
 1. Install [Werkzeug](https://pypi.org/project/Werkzeug/#files) by either using `pip` or placing the folder `Werkzeug-(version)/src/werkzeug` from downloaded archive to cloned repo.
 
-2. Pick a HFS template (for HFS 2.4), rename it to `hfs.tpl` and place into cloned repo.
+2. Install [WSGIserver](https://pypi.org/project/WSGIserver/#files) by either using `pip` or placing the file `WSGIserver-(version)/wsgiserver.py` from downloaded archive to cloned repo.
 
-3. Configure port, base folder and upload-allowed folders in `hfs.ini`.
+3. Pick a HFS template (for HFS 2.4), rename it to `hfs.tpl` and place into cloned repo.
 
-4. For running a server, open `_run_simple.py`; for developing, open `_test.py`; for using as a CGI server with Apache etc., use `cgi.cgi`, and consult Internet for how-to.
+4. Configure port, base folder and upload-allowed folders in `hfs.ini`.
+
+5. For running a server, open `run.py`; for developing, open `test.py`.
 
 Template choices:
 
@@ -64,17 +66,16 @@ Template choices:
 
 - To use in QPython 3L on Android:
   - Put repo into folder `/sdcard/qpython/projects3`, ensure folder is not nested.
-  - Rename `_run_simple.py` to `main.py`.
+  - Rename `run.py` to `main.py`.
   - In QPython 3L app, go to Programs, in Projects tab, select repo name then run.
 
 ### Files
 
-- `_test.py`: Run a server for testing, debugging. It also contains werkzeug's reload feature.
-- `_run_simple.py`: Run a simple server. Has no debug feature, but works on [pypy](https://www.pypy.org/) on aarch64 architecture.
+- `test.py`: Run a server for testing, debugging. It also contains werkzeug's reload feature.
+- `run.py`: Run a simple server. Has no debug feature, but works on [pypy](https://www.pypy.org/) on aarch64 architecture.
 - `hfs.ini`: Some configs, like port, are here. Currently you can set a base path as the root dir of served pages, also can set upload-allowed paths.
 
 - `_test_macro.py`: Run & test a macro, by entering as argv1 in commandline.
-- `cgi.cgi`: For being used as a CGI application with Apache, Nginx etc.
 
 - `cfgLib.py`: The `Config` object is inside this file.
 - `classesLib.py`: Some useful `class`es are here.

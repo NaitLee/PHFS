@@ -46,11 +46,13 @@
 
 1. 安装 [Werkzeug](https://pypi.org/project/Werkzeug/#files)。可以使用 `pip`，或者将下载的压缩包中的文件夹 `Werkzeug-(版本)/src/werkzeug` 放入 clone 的 repo 内。
 
-2. 选择一个用于 2.4 的 HFS 模板，重命名为 `hfs.tpl` 并放入 repo。
+2. 安装 [WSGIserver](https://pypi.org/project/WSGIserver/#files)。可以使用 `pip`，或者将下载的压缩包中的文件夹 `WSGIserver-(version)/wsgiserver.py` 放入 clone 的 repo 内。
 
-3. 在 `hfs.ini` 中配置端口、基文件夹、允许上传的文件夹。
+3. 选择一个用于 2.4 的 HFS 模板，重命名为 `hfs.tpl` 并放入 repo。
 
-4. 要开始一个服务器，用 `python3` 打开 `_run_simple.py`；要进行开发工作，打开 `_test.py`；要用于 Apache 等作为 CGI 服务器，使用 `cgi.cgi`，方法请查询网络。
+4. 在 `hfs.ini` 中配置端口、基文件夹、允许上传的文件夹。
+
+5. 要开始一个服务器，用 `python3` 打开 `run.py`；要进行开发工作，打开 `test.py`。
 
 可用的一些模板：
 
@@ -63,17 +65,16 @@
 
 - 要在 Android QPython 3L 上使用：
   - 将 repo 放置于 `/sdcard/qpython/projects3`，确保文件夹层级正确。
-  - 将 `_run_simple.py` 重命名为 `main.py`。
+  - 将 `run.py` 重命名为 `main.py`。
   - 在 QPython 3L app 内，进入 Programs，在 Projects 标签，选择 repo 名称并 Run。
 
 ### 文件
 
-- `_test.py`: 开始一个服务器用于开发、调试。它包含 werkzeug 的重载功能。
-- `_run_simple.py`: 开始一个简单服务器。它可用于 aarch64 架构的 [pypy](https://www.pypy.org/)。
+- `test.py`: 开始一个服务器用于开发、调试。它包含 werkzeug 的重载功能。
+- `run.py`: 开始一个简单服务器。它可用于 aarch64 架构的 [pypy](https://www.pypy.org/)。
 - `hfs.ini`: 一些如端口的配置在这里。此时您可以配置基文件夹作为根目录。
 
 - `_test_macro.py`: 运行指定在命令行 argv1 的宏。
-- `cgi.cgi`: 用于在 Apache、Nginx 等上的 CGI 服务器。
 
 - `cfgLib.py`: 对象 `Config` 在此文件中。
 - `classesLib.py`: 这里有一些有用的类。
