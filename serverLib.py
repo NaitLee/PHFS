@@ -19,7 +19,7 @@ class PTIRequest(Request):
         self.build_time_start = time.time()
 
 class IllegalFilenameError(Exception):
-    """ Filename is illegal
+    """ Upload: Filename is illegal
     """
 
 class PHFSServer():
@@ -38,7 +38,8 @@ class PHFSServer():
         request = PTIRequest(environ, path, resource)
         uni_param = UniParam([], interpreter=self.interpreter, request=request)
         page_param = PageParam([], request)
-        levels = path.split('/')
+        levels_virtual = path.split('/')
+        # levels_real = resource.split('/')
         if request.method == 'POST':
             # File upload
             if len(request.files) > 0:
@@ -75,7 +76,7 @@ class PHFSServer():
                 response = self.not_found_response(request)
                 return response(environ, start_response)
             pattern = re.compile(wildcard2re(request.args['search']), re.I)
-            recursive = 'recursive' in request.args
+            recursive = 'recursive' in request.args or bool(Config.recur_search)
             items_folder = []
             items_file = []
             if recursive:
@@ -103,7 +104,7 @@ class PHFSServer():
                 response = self.not_found_response(request)
                 return response(environ, start_response)
             pattern = re.compile(wildcard2re(request.args['filter']), re.I)
-            recursive = 'recursive' in request.args
+            recursive = 'recursive' in request.args or bool(Config.recur_search)
             items_folder = []
             items_file = []
             if recursive:
@@ -124,34 +125,30 @@ class PHFSServer():
             page = self.interpreter.get_page('', PageParam([items_folder + items_file, True], request))
             response = Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime('*.html'))
             return response(environ, start_response)
-        elif path[0:2] == '/~':
-            # Section, ~ at root
-            section_name = path[2:]
-            section = self.interpreter.get_section(section_name, uni_param, True, False)
-            if section == None:
-                response = self.not_found_response(request)
-            else:
-                page = Page(section.content, 200)
-                response = Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime(path))
-            return response(environ, start_response)
-        elif levels[-1][0:1] == '~':
+        elif levels_virtual[-1][0:1] == '~':
             # Command
-            command = levels[-1][1:]
+            command = levels_virtual[-1][1:]
+            if len(levels_virtual) == 2:
+                # Section call, only at root
+                section = self.interpreter.get_section(command, uni_param, True, False)
+                if section != None:
+                    page = Page(section.content, 200)
+                    response = Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime(path))
+                else:
+                    response = self.not_found_response(request)
             if command == 'upload' and if_upload_allowed_in(request.path_real, Config):
                 page = self.interpreter.get_page('upload', page_param)
                 response = Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime('*.html'))
             elif command == 'folder.tar':
                 tmp = tempfile.TemporaryFile(mode='w+b')
                 tar = tarfile.open(mode='w', fileobj=tmp)
-                path_real = '/'.join(levels[0:-1]) + '/'
+                path_real = request.path_real_dir + '/'
                 for i in os.listdir(path_real):
-                    is_recursive = True # 'recursive' in request.args
+                    is_recursive = 'recursive' in request.args or bool(Config.recur_archive)
                     tar.add(path_real + i, i, recursive=is_recursive)
                 tar.close()     # Pointer is at the end of file
                 tmp.seek(0)     # Read at start
                 response = send_file(tmp, environ, mimetype=mimeLib.getmime('*.tar'))
-            else:
-                response = self.not_found_response(request)
             return response(environ, start_response)
         elif resource != None:
             # Filelist or send file or 404
