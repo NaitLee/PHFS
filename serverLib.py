@@ -3,7 +3,7 @@ import os, io, tarfile, tempfile, mimeLib, time, re
 from werkzeug.wrappers import Request, Response
 from werkzeug.utils import send_file
 from tplLib import Interpreter
-from classesLib import UniParam, Page, PageParam
+from classesLib import UniParam, Page, FileList, ItemEntry
 from cfgLib import Config
 from helpersLib import get_dirname, if_upload_allowed_in, is_filename_illegal, wildcard2re
 
@@ -27,7 +27,7 @@ class PHFSServer():
     def __init__(self):
         pass
     def not_found_response(self, request: PTIRequest) -> Response:
-        page = self.interpreter.get_page('error-page', PageParam(['not found', 404], request))
+        page = self.interpreter.get_page('error-page', UniParam(['not found', 404], request=request))
         return Response(page.content, page.status, page.headers)
     def wsgi(self, environ, start_response):
         request_initial = Request(environ)
@@ -36,8 +36,7 @@ class PHFSServer():
         path = request_initial.path
         resource = Config.base_path + path
         request = PTIRequest(environ, path, resource)
-        uni_param = UniParam([], interpreter=self.interpreter, request=request)
-        page_param = PageParam([], request)
+        uni_param = UniParam([], interpreter=self.interpreter, request=request, filelist=FileList([]))
         levels_virtual = path.split('/')
         # levels_real = resource.split('/')
         if request.method == 'POST':
@@ -58,7 +57,7 @@ class PHFSServer():
                             upload_result[single_file.filename] = (True, '')
                         except Exception as e:
                             upload_result[single_file.filename] = (False, str(e))
-                    page = self.interpreter.get_page('upload-results', PageParam([upload_result], request))
+                    page = self.interpreter.get_page('upload-results', UniParam([upload_result], request=request))
                     response = Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime('*.html'))
                 return response(environ, start_response)
         if 'mode' in request.args:
@@ -66,7 +65,7 @@ class PHFSServer():
             mode = request.args['mode']
             if mode == 'section':
                 section_name = request.args.get('id', '')
-                page = self.interpreter.section_to_page(section_name, page_param)
+                page = self.interpreter.section_to_page(section_name, uni_param)
                 response = Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime(section_name))
             return response(environ, start_response)
         elif 'search' in request.args:
@@ -94,7 +93,12 @@ class PHFSServer():
                             items_folder.append(i.path)
                         else:
                             items_file.append(i.path)
-            page = self.interpreter.get_page('', PageParam([items_folder + items_file, True], request))
+            path_real_dir = request.path_real_dir
+            paths = [x.replace('\\', '/') for x in (items_folder + items_file)]
+            items = [ItemEntry(x, x[len(Config.base_path):]) for x in paths]
+            filelist = FileList(items)
+            uni_param.filelist = filelist
+            page = self.interpreter.get_page('', uni_param)
             response = Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime('*.html'))
             return response(environ, start_response)
         elif 'filter' in request.args:
@@ -122,7 +126,12 @@ class PHFSServer():
                             items_folder.append(i.path)
                         else:
                             items_file.append(i.path)
-            page = self.interpreter.get_page('', PageParam([items_folder + items_file, True], request))
+            path_real_dir = request.path_real_dir
+            paths = [x.replace('\\', '/') for x in (items_folder + items_file)]
+            items = [ItemEntry(x, x[len(Config.base_path):]) for x in paths]
+            filelist = FileList(items)
+            uni_param.filelist = filelist
+            page = self.interpreter.get_page('', uni_param)
             response = Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime('*.html'))
             return response(environ, start_response)
         elif levels_virtual[-1][0:1] == '~':
@@ -137,7 +146,7 @@ class PHFSServer():
                 else:
                     response = self.not_found_response(request)
             if command == 'upload' and if_upload_allowed_in(request.path_real, Config):
-                page = self.interpreter.get_page('upload', page_param)
+                page = self.interpreter.get_page('upload', uni_param)
                 response = Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime('*.html'))
             elif command == 'folder.tar':
                 tmp = tempfile.TemporaryFile(mode='w+b')
@@ -154,7 +163,13 @@ class PHFSServer():
             # Filelist or send file or 404
             if os.path.exists(resource):
                 if os.path.isdir(resource):
-                    page = self.interpreter.get_page('', page_param)
+                    if 'no list' not in self.interpreter.sections[''].params:
+                        path_real_dir = request.path_real_dir
+                        paths = [path_real_dir + x for x in os.listdir(path_real_dir)]
+                        items = [ItemEntry(x, x[len(Config.base_path):]) for x in paths]
+                        filelist = FileList(items)
+                        uni_param.filelist = filelist
+                    page = self.interpreter.get_page('', uni_param)
                     response = Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime('*.html'))
                 else:
                     response = send_file(resource, environ)

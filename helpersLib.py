@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 
 import urllib
-from classesLib import DictAsObject
 
 def sort(l, m, f):
     """ Bubble sort.  
@@ -27,14 +26,6 @@ def get_dirname(path):
         return path
     else:
         return '/'.join(levels[:-1])
-
-def object_from_dict(d: dict):
-    """ Get a `DictAsObject` from a normal `dict`
-    """
-    n = DictAsObject()
-    for i in d:
-        n[i] = d[i]
-    return n
 
 def replace_str(str0: str, str1: str, str2: str):
     """ A faster string replacer for once replacing.  

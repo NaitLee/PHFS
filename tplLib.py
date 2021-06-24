@@ -1,9 +1,9 @@
 
 import datetime, os, random, shutil, time
 
-from classesLib import TplSection, UniParam, MacroResult, MacroToCallable, PageParam, Page, ItemEntry
+from classesLib import TplSection, UniParam, MacroResult, MacroToCallable, Page, ItemEntry, FileList, object_from_dict
 from scriptLib import Commands
-from helpersLib import replace_str, read_ini, object_from_dict, concat_dict, concat_list, purify, smartsize, sort
+from helpersLib import replace_str, read_ini, concat_dict, concat_list, purify, smartsize, sort
 from cfgLib import Config
 
 class MacroNotClosedProperly(Exception):
@@ -54,12 +54,12 @@ class Interpreter():
                 'up': lambda p: self.get_section('up', p, True, True),
                 'upload-link': lambda p: self.get_section('upload-link', p, True, True),
                 'host': lambda p: MacroResult(p.request.host),
-                'number': lambda p: MacroResult(str(len(os.listdir(p.request.path_real_dir)))),
-                'number-files': lambda p: MacroResult(str(len(list(filter(lambda x: os.path.isfile(x), os.listdir(p.request.path_real)))))),
-                'number-folders': lambda p: MacroResult(str(len(list(filter(lambda x: os.path.isdir(x), os.listdir(p.request.path_real)))))),
-                'total-size': lambda p: MacroResult('0'),
-                'total-kbytes': lambda p: MacroResult('0'),
-                'total-bytes': lambda p: MacroResult('0'),
+                'number': lambda p: MacroResult(str(p.filelist.count)),
+                'number-files': lambda p: MacroResult(str(p.filelist.count_files)),
+                'number-folders': lambda p: MacroResult(str(p.filelist.count_folders)),
+                'total-size': lambda p: MacroResult(smartsize(sum([os.stat(x.path).st_size for x in p.filelist.items]))),
+                'total-kbytes': lambda p: MacroResult(str(sum([os.stat(x.path).st_size for x in p.filelist.items]) // 1024)),
+                'total-bytes': lambda p: MacroResult(str(sum([os.stat(x.path).st_size for x in p.filelist.items]))),
                 'list': self.get_list,
                 'folder-item-comment': lambda p: MacroResult('')
             }),
@@ -117,124 +117,8 @@ class Interpreter():
         return
     def get_list(self, param: UniParam):
         """ Get filelist, called by symbol `%list%`.  
-            `param`: a `UniParam` used to parse symbols.  
-            `extra_entries` as `param.params[0]`: Extra file/folder entries to show.  
-            `extra_only` as `param.params[1]`: Display extra entries only?
         """
-        real_dir = param.request.path_real_dir
-        filelist = []
-        extra_entries = []
-        extra_only = False
-        if len(param.params) > 1:
-            extra_entries = param.params[0]
-            extra_only = param.params[1]
-        if not extra_only:
-            filelist = os.listdir(real_dir)
-        filelist += extra_entries
-        if Config.cache_page:
-            cache = self.cached_pages.get(str(filelist), None)
-            if cache != None:
-                return Page(cache, 200)
-        scanresult = []
-        if not extra_only:
-            scanresult = [ItemEntry(real_dir + x, real_dir) for x in filelist]
-        scanresult += [ItemEntry(x, real_dir) for x in extra_entries]
-        fileinfos_file = {   # for sorting
-            'name': [],
-            'ext': [],
-            'modified': [],
-            'added': [],
-            'size': []
-        }
-        fileinfos_folder = {   # for sorting
-            'name': [],
-            'ext': [],
-            'modified': [],
-            'added': [],
-            'size': []
-        }
-        _file = self.sections.get('file', self.sections['_empty'])
-        _folder = self.sections.get('folder', self.sections['_empty'])
-        _link = self.sections.get('link', self.sections['_empty'])
-        links_file = []
-        links_folder = []
-        for e in scanresult:
-            # if not (os.path.exists(e.path) and os.access(e.path, os.R_OK)):  # sometimes appears a non-exist or unreadable file
-            #     continue
-            stats = e.stat()
-            url = purify(e.url + ('' if e.is_file() and e.url[-1] != '/' else '/'))
-            name = e.name.replace('|', '&#124;')
-            last_modified = str(datetime.datetime.fromtimestamp(stats.st_mtime)).split('.')[0]
-            last_modified_dt = stats.st_mtime
-            size = stats.st_size
-            if e.is_file():
-                fileinfos_file['name'].append(name)
-                fileinfos_file['ext'].append(name.split('.')[-1])
-                fileinfos_file['modified'].append(last_modified_dt)
-                fileinfos_file['added'].append(last_modified_dt)
-                fileinfos_file['size'].append(size)
-                param.symbols = concat_dict(param.symbols, {
-                    'item-url': lambda p: MacroResult(url),
-                    'item-name': lambda p: MacroResult(name),
-                    'item-ext': lambda p: MacroResult(name.split('.')[-1]),
-                    'item-modified': lambda p: MacroResult(last_modified),
-                    'item-modified-dt': lambda p: MacroResult(str(last_modified_dt)),
-                    'item-size': lambda p: MacroResult(smartsize(size)),
-                    'item-comment': lambda p: MacroResult(''),
-                    'item-icon': lambda p: MacroResult('')
-                })
-                links_file.append(self.parse_text(_file.content, param).content)
-            else:
-                fileinfos_folder['name'].append(name)
-                fileinfos_folder['ext'].append(name.split('.')[-1])
-                fileinfos_folder['modified'].append(last_modified_dt)
-                fileinfos_folder['added'].append(last_modified_dt)
-                fileinfos_folder['size'].append(size)
-                param.symbols = concat_dict(param.symbols, {
-                    'item-url': lambda p: MacroResult(url),
-                    'item-name': lambda p: MacroResult(name),
-                    'item-ext': lambda p: MacroResult(name.split('.')[-1]),
-                    'item-modified': lambda p: MacroResult(last_modified),
-                    'item-modified-dt': lambda p: MacroResult(str(last_modified_dt)),
-                    'item-size': lambda p: MacroResult(smartsize(size)),
-                    'item-comment': lambda p: MacroResult(''),
-                    'item-icon': lambda p: MacroResult('')
-                })
-                links_folder.append(self.parse_text(_folder.content, param).content)
-        sorting_comp = 'name'
-        sorting_func = lambda a, b: int(sorted([a, b]) != [a, b])
-        if 'sort' in param.request.args:
-            sort_by = param.request.args['sort']
-            rev = 'rev' in param.request.args
-            if sort_by == 'e' and not rev:
-                sorting_comp = 'ext'
-                sorting_func = lambda a, b: int(sorted([a, b]) != [a, b])
-            elif sort_by == 'n' and not rev:
-                sorting_comp = 'name'
-                sorting_func = lambda a, b: int(sorted([a, b]) != [a, b])
-            elif sort_by == 't' and not rev:
-                sorting_comp = 'modified'
-                sorting_func = lambda a, b: a - b
-            elif sort_by == 's' and not rev:
-                sorting_comp = 'size'
-                sorting_func = lambda a, b: a - b
-            elif sort_by == '!e' or (sort_by == 'e' and rev):
-                sorting_comp = 'ext'
-                sorting_func = lambda a, b: int(sorted([a, b]) == [a, b])
-            elif sort_by == '!n' or (sort_by == 'n' and rev):
-                sorting_comp = 'name'
-                sorting_func = lambda a, b: int(sorted([a, b]) == [a, b])
-            elif sort_by == '!t' or (sort_by == 't' and rev):
-                sorting_comp = 'modified'
-                sorting_func = lambda a, b: b - a
-            elif sort_by == '!s' or (sort_by == 's' and rev):
-                sorting_comp = 'size'
-                sorting_func = lambda a, b: b - a
-        links_folder = sort(links_folder, fileinfos_folder[sorting_comp], sorting_func)
-        links_file = sort(links_file, fileinfos_file[sorting_comp], sorting_func)
-        page_content = ''.join(links_folder) + ''.join(links_file)
-        if Config.cache_page:
-            self.cached_pages[str(filelist)] = page_content
+        page_content = param.filelist.to_list(param)
         return Page(page_content, 200)
     def get_section(self, section_name: str, param: UniParam, do_parse=True, force=False) -> MacroResult:
         """ Get a section from template. What this returns is a `MacroResult`.   
@@ -248,23 +132,23 @@ class Interpreter():
             return None
         param.symbols = concat_dict(param.symbols, section.symbols)
         return self.parse_text(section.content, param) if do_parse else MacroResult(section.content)
-    def section_to_page(self, section_name, param: PageParam):
-        uni_param = UniParam(param.params, interpreter=self, request=param.request)
+    def section_to_page(self, section_name, param: UniParam):
+        uni_param = param
         section = self.get_section(section_name, uni_param, True, True)
         if section == None:
-            return self.get_page('error-page', PageParam(['not found', 404], param.request))
+            return self.get_page('error-page', UniParam(['not found', 404], request=param.request))
         status = 200
         if 'Location' in section.headers:
             status = 302
         return Page(section.content, status, section.headers, section.cookies)
-    def get_page(self, page_name: str, param: PageParam) -> Page:
-        uni_param = UniParam([], interpreter=self, request=param.request)
+    def get_page(self, page_name: str, param: UniParam) -> Page:
+        uni_param = param
         if page_name == '':
             page = self.section_to_page('', param)
             page.content = replace_str(page.content, '%build-time%', str(round(time.time() - param.request.build_time_start, 3)))
             return page
         elif page_name == 'files':
-            if len(os.listdir(param.request.path_real_dir)) == 0:
+            if param.filelist.count == 0:
                 nofiles = self.get_section('nofiles', param, True, True)
                 return Page(nofiles.content, 200)
             return self.section_to_page('files', param)

@@ -1,6 +1,9 @@
 
 import os
 from typing import Union
+import datetime
+
+from helpersLib import get_dirname, purify, concat_dict, smartsize, sort
 
 class DictAsObject(dict):
     """ Let you use a dict like an object in JavaScript.  
@@ -18,14 +21,13 @@ class DictAsObject(dict):
         self[key] = value
         return
 
-class PageParam():
-    """ Params for getting a page with `Interpreter.get_page`
+def object_from_dict(d: dict):
+    """ Get a `DictAsObject` from a normal `dict`
     """
-    params: list
-    request = None
-    def __init__(self, params: list, request):
-        self.params = params
-        self.request = request
+    n = DictAsObject()
+    for i in d:
+        n[i] = d[i]
+    return n
 
 class Page():
     """ A generated page.  
@@ -43,25 +45,6 @@ class Page():
         self.headers = headers
         self.cookies = cookies
 
-class ItemEntry():
-    """ A class that acts like `os.DirEntry`, but with more.  
-        `path`: File/Folder path.  
-        `path_real_dir`: as like this in `PTIRequest`, used for cutting path to url
-    """
-    def __init__(self, path, path_real_dir):
-        levels = path.split('/')
-        self.name = levels[-2] if path[-1] == '/' else levels[-1]
-        self.path = path
-        self.url = path[len(path_real_dir):]
-        self._is_dir = os.path.isdir(path)
-        self._stat = os.stat(path)
-    def is_file(self):
-        return not self._is_dir
-    def is_dir(self):
-        return self._is_dir
-    def stat(self):
-        return self._stat
-
 class TplSection():
     """ A template section.  
         `content`: Text in this section.  
@@ -78,15 +61,17 @@ class TplSection():
 
 class UniParam():
     """ Universal params.  
-        `params`: A `list` of params, used by macros.  
+        `params`: A `list` of params, used by macros etc.  
         `symbols`: A `dict` with callable values, used by interpreter.  
         `interpreter`: A `TplInterpreter` instance.  
-        `request`: The WSGI request.
+        `request`: The WSGI request.  
+        `filelist`: A `FileList` object.
     """
     params: list
     symbols: dict = {}
     interpreter = None
     request = None
+    filelist = None
     def __init__(self, params: list, **kwargs):
         self.params = params
         for i in kwargs:
@@ -121,3 +106,134 @@ class MacroToCallable():
         for i, j in enumerate(param.params):
             new_str = new_str.replace('$' + str(i), j)
         return self.interpreter.parse_text(new_str, param)
+
+class ItemEntry():
+    """ A class that acts like `os.DirEntry`, but with more.
+    """
+    name: str
+    path: str
+    url: str
+    _is_dir: bool
+    _stat: os.stat_result
+    def __init__(self, path_real: str, path_virtual: str):
+        levels_real = path_real.split('/')
+        self.name = levels_real[-2] if path_real[-1] == '/' else levels_real[-1]
+        self.path = path_real
+        self.url = path_virtual
+        self._is_dir = os.path.isdir(path_real)
+        self._stat = os.stat(path_real)
+    def is_file(self):
+        return not self._is_dir
+    def is_dir(self):
+        return self._is_dir
+    def stat(self):
+        return self._stat
+
+class FileList():
+    """ A file list.  
+        `items`: A `list` of `ItemEntry`.
+    """
+    items: list
+    def __init__(self, items: list):
+        self.items = items
+        self.count = len(items)
+        self.count_folders = len([True for x in items if x.is_dir()])
+        self.count_files = self.count - self.count_folders
+    def to_list(self, param: UniParam):
+        interpreter = param.interpreter
+        scanresult = self.items
+        fileinfos_file = {   # for sorting
+            'name': [],
+            'ext': [],
+            'modified': [],
+            'added': [],
+            'size': []
+        }
+        fileinfos_folder = {   # for sorting
+            'name': [],
+            'ext': [],
+            'modified': [],
+            'added': [],
+            'size': []
+        }
+        _file = interpreter.sections.get('file', interpreter.sections['_empty'])
+        _folder = interpreter.sections.get('folder', interpreter.sections['_empty'])
+        _link = interpreter.sections.get('link', interpreter.sections['_empty'])
+        links_file = []
+        links_folder = []
+        for e in scanresult:
+            # if not (os.path.exists(e.path) and os.access(e.path, os.R_OK)):  # sometimes appears a non-exist or unreadable file
+            #     continue
+            stats = e.stat()
+            url = purify(e.url + ('' if e.is_file() and e.url[-1] != '/' else '/'))
+            name = e.name.replace('|', '&#124;')
+            last_modified = str(datetime.datetime.fromtimestamp(stats.st_mtime)).split('.')[0]
+            last_modified_dt = stats.st_mtime
+            size = stats.st_size
+            if e.is_file():
+                fileinfos_file['name'].append(name)
+                fileinfos_file['ext'].append(name.split('.')[-1])
+                fileinfos_file['modified'].append(last_modified_dt)
+                fileinfos_file['added'].append(last_modified_dt)
+                fileinfos_file['size'].append(size)
+                param.symbols = concat_dict(param.symbols, {
+                    'item-url': lambda p: MacroResult(url),
+                    'item-name': lambda p: MacroResult(name),
+                    'item-ext': lambda p: MacroResult(name.split('.')[-1]),
+                    'item-modified': lambda p: MacroResult(last_modified),
+                    'item-modified-dt': lambda p: MacroResult(str(last_modified_dt)),
+                    'item-size': lambda p: MacroResult(smartsize(size)),
+                    'item-comment': lambda p: MacroResult(''),
+                    'item-icon': lambda p: MacroResult('')
+                })
+                links_file.append(interpreter.parse_text(_file.content, param).content)
+            else:
+                fileinfos_folder['name'].append(name)
+                fileinfos_folder['ext'].append(name.split('.')[-1])
+                fileinfos_folder['modified'].append(last_modified_dt)
+                fileinfos_folder['added'].append(last_modified_dt)
+                fileinfos_folder['size'].append(size)
+                param.symbols = concat_dict(param.symbols, {
+                    'item-url': lambda p: MacroResult(url),
+                    'item-name': lambda p: MacroResult(name),
+                    'item-ext': lambda p: MacroResult(name.split('.')[-1]),
+                    'item-modified': lambda p: MacroResult(last_modified),
+                    'item-modified-dt': lambda p: MacroResult(str(last_modified_dt)),
+                    'item-size': lambda p: MacroResult(smartsize(size)),
+                    'item-comment': lambda p: MacroResult(''),
+                    'item-icon': lambda p: MacroResult('')
+                })
+                links_folder.append(interpreter.parse_text(_folder.content, param).content)
+        sorting_comp = 'name'
+        sorting_func = lambda a, b: int(sorted([a, b]) != [a, b])
+        if 'sort' in param.request.args:
+            sort_by = param.request.args['sort']
+            rev = 'rev' in param.request.args
+            if sort_by == 'e' and not rev:
+                sorting_comp = 'ext'
+                sorting_func = lambda a, b: int(sorted([a, b]) != [a, b])
+            elif sort_by == 'n' and not rev:
+                sorting_comp = 'name'
+                sorting_func = lambda a, b: int(sorted([a, b]) != [a, b])
+            elif sort_by == 't' and not rev:
+                sorting_comp = 'modified'
+                sorting_func = lambda a, b: a - b
+            elif sort_by == 's' and not rev:
+                sorting_comp = 'size'
+                sorting_func = lambda a, b: a - b
+            elif sort_by == '!e' or (sort_by == 'e' and rev):
+                sorting_comp = 'ext'
+                sorting_func = lambda a, b: int(sorted([a, b]) == [a, b])
+            elif sort_by == '!n' or (sort_by == 'n' and rev):
+                sorting_comp = 'name'
+                sorting_func = lambda a, b: int(sorted([a, b]) == [a, b])
+            elif sort_by == '!t' or (sort_by == 't' and rev):
+                sorting_comp = 'modified'
+                sorting_func = lambda a, b: b - a
+            elif sort_by == '!s' or (sort_by == 's' and rev):
+                sorting_comp = 'size'
+                sorting_func = lambda a, b: b - a
+        links_folder = sort(links_folder, fileinfos_folder[sorting_comp], sorting_func)
+        links_file = sort(links_file, fileinfos_file[sorting_comp], sorting_func)
+        page_content = ''.join(links_folder) + ''.join(links_file)
+        return page_content
