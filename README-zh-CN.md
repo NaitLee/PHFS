@@ -14,14 +14,14 @@
 
 - 文件列表，下载
 - 排序文件，打包下载
-- 一些宏，`special:alias`
-- 上传
-- 搜索
+- 上传，搜索
 - 本地化，`special:strings`
+- 一些宏，`special:alias`
 
 🕳 仍不可用的功能：
 
 - 虚拟文件系统（VFS）
+- 文件操作
 - 账户、登录、封禁、限制、……
 
 🍉 支持的平台:
@@ -57,11 +57,15 @@
 可用的一些模板：
 
 - [HFS 默认模板](https://github.com/rejetto/hfs2/raw/master/default.tpl)
-- [Takeback](https://github.com/NaitLee/Takeback-HFS-Template/releases/latest)
+- [Takeback](https://github.com/NaitLee/Takeback-HFS-Template/releases/latest) （推荐）
 - [Throwback](http://rejetto.com/forum/index.php?topic=12055.0)
 - [Stripes](http://rejetto.com/forum/index.php?topic=13415.0)
+- [mobil-light](http://rejetto.com/forum/index.php?topic=11754.msg1066583#msg1066583)
 
 ### 注记
+
+- 有缘相见 ♪(^∇^*)~
+  - QQ 交流群号：676460276
 
 - 要在 Android QPython 3L 上使用：
   - 将 repo 放置于 `/sdcard/qpython/projects3`，确保文件夹层级正确。

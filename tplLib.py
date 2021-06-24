@@ -94,11 +94,11 @@ class Interpreter():
                 if j not in self.sections:
                     self.sections[j] = TplSection('', [], {})
                 if plus:
-                    self.sections[j].content += t[1]
+                    self.sections[j].content += t[1].strip('\n') + '\n'
                 elif prepend:
-                    self.sections[j].content = t[1] + self.sections[j].content
+                    self.sections[j].content = t[1] + self.sections[j].content.strip('\n') + '\n'
                 else:
-                    self.sections[j].content = t[1]
+                    self.sections[j].content = t[1].strip('\n') + '\n'
                     self.sections[j].params = p[1:]
         self.translations = {}
         for i in self.sections.get('special:strings', self.sections['_empty']).content.split('\n'):

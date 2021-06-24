@@ -5,7 +5,7 @@ from werkzeug.utils import send_file
 from tplLib import Interpreter
 from classesLib import UniParam, Page, FileList, ItemEntry
 from cfgLib import Config
-from helpersLib import get_dirname, if_upload_allowed_in, is_filename_illegal, wildcard2re
+from helpersLib import get_dirname, if_upload_allowed_in, is_filename_illegal, wildcard2re, join_path
 
 class PTIRequest(Request):
     path_virtual: str = '/'
@@ -24,6 +24,11 @@ class IllegalFilenameError(Exception):
 
 class PHFSServer():
     interpreter = Interpreter()
+    itp_filelist = interpreter
+    if os.path.exists('hfs.filelist.tpl'):
+        itp_filelist = Interpreter('hfs.filelist.tpl')
+    else:
+        itp_filelist = Interpreter('filelist.tpl')
     def __init__(self):
         pass
     def not_found_response(self, request: PTIRequest) -> Response:
@@ -34,11 +39,13 @@ class PHFSServer():
         response = Response('bad request', 400)
         page = Page('', 400)
         path = request_initial.path
-        resource = Config.base_path + path
+        resource = join_path(Config.base_path, path)
         request = PTIRequest(environ, path, resource)
         uni_param = UniParam([], interpreter=self.interpreter, request=request, filelist=FileList([]))
         levels_virtual = path.split('/')
         # levels_real = resource.split('/')
+        if request.args.get('tpl', '') == 'list':
+            uni_param.interpreter = self.itp_filelist
         if request.method == 'POST':
             # File upload
             if len(request.files) > 0:
@@ -53,7 +60,7 @@ class PHFSServer():
                         try:
                             if is_filename_illegal(single_file.filename):
                                 raise IllegalFilenameError('Illegal filename')
-                            single_file.save(resource + single_file.filename)
+                            single_file.save(join_path(resource, single_file.filename))
                             upload_result[single_file.filename] = (True, '')
                         except Exception as e:
                             upload_result[single_file.filename] = (False, str(e))
@@ -65,7 +72,7 @@ class PHFSServer():
             mode = request.args['mode']
             if mode == 'section':
                 section_name = request.args.get('id', '')
-                page = self.interpreter.section_to_page(section_name, uni_param)
+                page = uni_param.interpreter.section_to_page(section_name, uni_param)
                 response = Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime(section_name))
             return response(environ, start_response)
         elif 'search' in request.args:
@@ -93,12 +100,12 @@ class PHFSServer():
                             items_folder.append(i.path)
                         else:
                             items_file.append(i.path)
-            path_real_dir = request.path_real_dir
+            path_real_dir = request.path_real_dir + '/'
             paths = [x.replace('\\', '/') for x in (items_folder + items_file)]
-            items = [ItemEntry(x, x[len(Config.base_path):]) for x in paths]
+            items = [ItemEntry(x, x, path_real_dir) for x in paths]
             filelist = FileList(items)
             uni_param.filelist = filelist
-            page = self.interpreter.get_page('', uni_param)
+            page = uni_param.interpreter.get_page('', uni_param)
             response = Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime('*.html'))
             return response(environ, start_response)
         elif 'filter' in request.args:
@@ -126,12 +133,12 @@ class PHFSServer():
                             items_folder.append(i.path)
                         else:
                             items_file.append(i.path)
-            path_real_dir = request.path_real_dir
+            path_real_dir = request.path_real_dir + '/'
             paths = [x.replace('\\', '/') for x in (items_folder + items_file)]
-            items = [ItemEntry(x, x[len(Config.base_path):]) for x in paths]
+            items = [ItemEntry(x, x, path_real_dir) for x in paths]
             filelist = FileList(items)
             uni_param.filelist = filelist
-            page = self.interpreter.get_page('', uni_param)
+            page = uni_param.interpreter.get_page('', uni_param)
             response = Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime('*.html'))
             return response(environ, start_response)
         elif levels_virtual[-1][0:1] == '~':
@@ -139,14 +146,14 @@ class PHFSServer():
             command = levels_virtual[-1][1:]
             if len(levels_virtual) == 2:
                 # Section call, only at root
-                section = self.interpreter.get_section(command, uni_param, True, False)
+                section = uni_param.interpreter.get_section(command, uni_param, True, False)
                 if section != None:
                     page = Page(section.content, 200)
                     response = Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime(path))
                 else:
                     response = self.not_found_response(request)
             if command == 'upload' and if_upload_allowed_in(request.path_real, Config):
-                page = self.interpreter.get_page('upload', uni_param)
+                page = uni_param.interpreter.get_page('upload', uni_param)
                 response = Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime('*.html'))
             elif command == 'folder.tar':
                 tmp = tempfile.TemporaryFile(mode='w+b')
@@ -158,19 +165,28 @@ class PHFSServer():
                 tar.close()     # Pointer is at the end of file
                 tmp.seek(0)     # Read at start
                 response = send_file(tmp, environ, mimetype=mimeLib.getmime('*.tar'))
+            elif command == 'files.lst':
+                uni_param.interpreter = self.itp_filelist
+                path_real_dir = request.path_real_dir + '/'
+                paths = [join_path(path_real_dir, x) for x in os.listdir(path_real_dir)]
+                items = [ItemEntry(x, x, path_real_dir) for x in paths]
+                filelist = FileList(items)
+                uni_param.filelist = filelist
+                page = uni_param.interpreter.get_page('', uni_param)
+                response = Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime('*.txt'))
             return response(environ, start_response)
         elif resource != None:
             # Filelist or send file or 404
             if os.path.exists(resource):
                 if os.path.isdir(resource):
-                    if 'no list' not in self.interpreter.sections[''].params:
-                        path_real_dir = request.path_real_dir
-                        paths = [path_real_dir + x for x in os.listdir(path_real_dir)]
-                        items = [ItemEntry(x, x[len(Config.base_path):]) for x in paths]
+                    if 'no list' not in uni_param.interpreter.sections[''].params:
+                        path_real_dir = request.path_real_dir + '/'
+                        paths = [join_path(path_real_dir, x) for x in os.listdir(path_real_dir)]
+                        items = [ItemEntry(x, x, path_real_dir) for x in paths]
                         filelist = FileList(items)
                         uni_param.filelist = filelist
-                    page = self.interpreter.get_page('', uni_param)
-                    response = Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime('*.html'))
+                    page = uni_param.interpreter.get_page('', uni_param)
+                    response = Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime('*.txt' if uni_param.interpreter == self.itp_filelist else '*.html'))
                 else:
                     response = send_file(resource, environ)
             else:

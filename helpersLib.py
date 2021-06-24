@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-import urllib
+import urllib, os
 
 def sort(l, m, f):
     """ Bubble sort.  
@@ -23,7 +23,7 @@ def get_dirname(path):
     """
     levels = path.split('/')
     if levels[-1] == '':   # is a dir
-        return path
+        return path[0:-1]
     else:
         return '/'.join(levels[:-1])
 
@@ -99,6 +99,11 @@ def concat_list(*lists):
         for j in i:
             new_list.append(j)
     return new_list
+
+def join_path(path1, path2):
+    """ Join two paths, with backslash replaced with slash
+    """
+    return os.path.join(path1, path2).replace('\\', '/')
 
 def purify(s: str):
     """ uriencode input string, change \\ to / """

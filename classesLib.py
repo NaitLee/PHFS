@@ -115,11 +115,11 @@ class ItemEntry():
     url: str
     _is_dir: bool
     _stat: os.stat_result
-    def __init__(self, path_real: str, path_virtual: str):
+    def __init__(self, path_real: str, path_virtual: str, base_virtual_dir='/'):
         levels_real = path_real.split('/')
         self.name = levels_real[-2] if path_real[-1] == '/' else levels_real[-1]
         self.path = path_real
-        self.url = path_virtual
+        self.url = path_virtual[len(base_virtual_dir):]
         self._is_dir = os.path.isdir(path_real)
         self._stat = os.stat(path_real)
     def is_file(self):
@@ -178,6 +178,7 @@ class FileList():
                 fileinfos_file['size'].append(size)
                 param.symbols = concat_dict(param.symbols, {
                     'item-url': lambda p: MacroResult(url),
+                    'item-full-url': lambda p: MacroResult(url),
                     'item-name': lambda p: MacroResult(name),
                     'item-ext': lambda p: MacroResult(name.split('.')[-1]),
                     'item-modified': lambda p: MacroResult(last_modified),
@@ -195,6 +196,7 @@ class FileList():
                 fileinfos_folder['size'].append(size)
                 param.symbols = concat_dict(param.symbols, {
                     'item-url': lambda p: MacroResult(url),
+                    'item-full-url': lambda p: MacroResult(url),
                     'item-name': lambda p: MacroResult(name),
                     'item-ext': lambda p: MacroResult(name.split('.')[-1]),
                     'item-modified': lambda p: MacroResult(last_modified),

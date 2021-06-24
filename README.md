@@ -14,10 +14,9 @@
 
 - Filelist, download
 - Sorting files, Archiving
-- Some macros, `special:alias`
-- Upload
-- Search
+- Upload, Search
 - Translations, `special:strings`
+- Some macros, `special:alias`
 
 🕳 Features that don't work:
 
@@ -41,9 +40,9 @@
 
 ## Developer Notes
 
-👀 This project is only half working, it is not yet ready for production use. Testing only.
+👀 This project is not yet ready for production use. But you are welcomed to have a taste!
 
-If you are interested in testing this project, please do the following:
+If you want to step forward, please do the following:
 
 1. Install [Werkzeug](https://pypi.org/project/Werkzeug/#files) by either using `pip` or placing the folder `Werkzeug-(version)/src/werkzeug` from downloaded archive to cloned repo.
 
@@ -58,9 +57,10 @@ If you are interested in testing this project, please do the following:
 Template choices:
 
 - [HFS Default Template](https://github.com/rejetto/hfs2/raw/master/default.tpl)
-- [Takeback](https://github.com/NaitLee/Takeback-HFS-Template/releases/latest)
+- [Takeback](https://github.com/NaitLee/Takeback-HFS-Template/releases/latest) (Recommended)
 - [Throwback](http://rejetto.com/forum/index.php?topic=12055.0)
 - [Stripes](http://rejetto.com/forum/index.php?topic=13415.0)
+- [mobil-light](http://rejetto.com/forum/index.php?topic=11754.msg1066583#msg1066583)
 
 ### Notes
 
