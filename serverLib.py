@@ -32,7 +32,7 @@ class PHFSServer():
     def __init__(self):
         pass
     def not_found_response(self, request: PTIRequest) -> Response:
-        page = self.interpreter.get_page('error-page', UniParam(['not found', 404], request=request))
+        page = self.interpreter.get_page('error-page', UniParam(['not found', 404], interpreter=self.interpreter, request=request))
         return Response(page.content, page.status, page.headers)
     def wsgi(self, environ, start_response):
         request_initial = Request(environ)
@@ -64,7 +64,7 @@ class PHFSServer():
                             upload_result[single_file.filename] = (True, '')
                         except Exception as e:
                             upload_result[single_file.filename] = (False, str(e))
-                    page = self.interpreter.get_page('upload-results', UniParam([upload_result], request=request))
+                    page = self.interpreter.get_page('upload-results', UniParam([upload_result], interpreter=self.interpreter, request=request))
                     response = Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime('*.html'))
                 return response(environ, start_response)
         if 'mode' in request.args:

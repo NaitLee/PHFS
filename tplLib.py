@@ -133,10 +133,11 @@ class Interpreter():
         param.symbols = concat_dict(param.symbols, section.symbols)
         return self.parse_text(section.content, param) if do_parse else MacroResult(section.content)
     def section_to_page(self, section_name, param: UniParam):
-        uni_param = param
+        # Deep copy param, prevent modifying original one
+        uni_param = UniParam(param.params, interpreter=param.interpreter, request=param.request, filelist=param.filelist)
         section = self.get_section(section_name, uni_param, True, True)
         if section == None:
-            return self.get_page('error-page', UniParam(['not found', 404], request=param.request))
+            return self.get_page('error-page', UniParam(['not found', 404], interpreter=self, request=param.request))
         status = 200
         if 'Location' in section.headers:
             status = 302
@@ -162,6 +163,7 @@ class Interpreter():
             _failed = self.get_section('upload-failed', uni_param, False, True)
             uploaded_files = []
             upload_result = param.params[0]
+            assert type(upload_result) == dict, 'param.params[0] is not a dict'
             for i in upload_result:
                 result = upload_result[i]
                 if result[0] == True:
