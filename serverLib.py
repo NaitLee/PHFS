@@ -5,7 +5,7 @@ from werkzeug.utils import send_file
 from tplLib import Interpreter
 from classesLib import UniParam, Page, FileList, ItemEntry
 from cfgLib import Config
-from helpersLib import get_dirname, if_upload_allowed_in, is_filename_illegal, wildcard2re, join_path
+from helpersLib import get_dirname, if_upload_allowed_in, purify_filename, wildcard2re, join_path
 
 class PTIRequest(Request):
     path_virtual: str = '/'
@@ -57,13 +57,12 @@ class PHFSServer():
                         single_file = request.files[i]
                         if single_file.filename == '':
                             continue
+                        filename = purify_filename(single_file.filename)
                         try:
-                            if is_filename_illegal(single_file.filename):
-                                raise IllegalFilenameError('Illegal filename')
-                            single_file.save(join_path(resource, single_file.filename))
-                            upload_result[single_file.filename] = (True, '')
+                            single_file.save(join_path(resource, filename))
+                            upload_result[filename] = (True, '')
                         except Exception as e:
-                            upload_result[single_file.filename] = (False, str(e))
+                            upload_result[filename] = (False, str(e))
                     page = self.interpreter.get_page('upload-results', UniParam([upload_result], interpreter=self.interpreter, request=request))
                     response = Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime('*.html'))
                 return response(environ, start_response)
