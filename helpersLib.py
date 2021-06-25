@@ -102,8 +102,15 @@ def concat_list(*lists):
 
 def join_path(path1, path2):
     """ Join two paths, with backslash replaced with slash
+        Both `path1` and `path2` are considered non-absolute
     """
-    return os.path.join(path1, path2).replace('\\', '/')
+    path1 = path1.replace('\\', '/')
+    path2 = path2.replace('\\', '/')
+    if path1[-1:] != '/':
+        path1 = path1 + '/'
+    if path2[0:1] == '/':
+        path2 = path2[1:]
+    return os.path.join(path1, path2)
 
 def purify(s: str):
     """ uriencode input string, change \\ to / """
