@@ -2,7 +2,18 @@
 import os
 
 from helpersLib import read_ini
-from classesLib import DictAsObject
+
+class DictAsObject(dict):
+    """ As this in classesLib.py, used for resoving circular importing.
+    """
+    def __init__(self, **kwargs):
+        super().__init__(kwargs)
+    def __getattr__(self, key):
+        return self.get(key, None)
+    def __setattr__(self, key, value):
+        self[key] = value
+        return
+
 
 class CFG(DictAsObject):
     def __init__(self, cfg_path='hfs.ini'):

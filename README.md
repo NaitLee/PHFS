@@ -6,11 +6,11 @@
 ----
 🏗 Under construction...
 
-🎉 Please help make this project grow. **All contributions are welcome!**
+🎉 Please help make this project grow. **Contributions are welcome!**
 
 ----
 
-👏 Features that work:
+👏 Done Features:
 
 - Filelist, download
 - Sorting files, Archiving
@@ -18,7 +18,7 @@
 - Translations, `special:strings`
 - Some macros, `special:alias`
 
-🕳 Features that don't work:
+🕳 To-do Features:
 
 - Virtual File System
 - File actions
@@ -40,9 +40,9 @@
 
 ## Developer Notes
 
-👀 This project is not yet ready for production use. But you are welcomed to have a taste!
+👀 This project is not yet ready for production use. But, please, have a try!
 
-If you want to step forward, please do the following:
+You can try by using a release, or:
 
 1. Install [Werkzeug](https://pypi.org/project/Werkzeug/#files) by either using `pip` or placing the folder `Werkzeug-(version)/src/werkzeug` from downloaded archive to cloned repo.
 

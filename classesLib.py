@@ -1,8 +1,9 @@
 
-import os
+import os, locale
 from typing import Union
 import datetime
 
+from cfgLib import Config
 from helpersLib import get_dirname, purify, concat_dict, smartsize, sort
 
 class DictAsObject(dict):
@@ -207,7 +208,12 @@ class FileList():
                 })
                 links_folder.append(interpreter.parse_text(_folder.content, param).content)
         sorting_comp = 'name'
-        sorting_func = lambda a, b: int(sorted([a, b]) != [a, b])
+        sort_encoding = 'utf-8'
+        if Config.sort_encoding == '':
+            sort_encoding = locale.getpreferredencoding()
+        else:
+            sort_encoding = Config.sort_encoding
+        sorting_func = lambda a, b: int(sorted([a, b], key=lambda x: x.encode(sort_encoding)) != [a, b])
         if 'sort' in param.request.args:
             sort_by = param.request.args['sort']
             rev = 'rev' in param.request.args
@@ -216,7 +222,7 @@ class FileList():
                 sorting_func = lambda a, b: int(sorted([a, b]) != [a, b])
             elif sort_by == 'n' and not rev:
                 sorting_comp = 'name'
-                sorting_func = lambda a, b: int(sorted([a, b]) != [a, b])
+                sorting_func = lambda a, b: int(sorted([a, b], key=lambda x: x.encode(sort_encoding)) != [a, b])
             elif sort_by == 't' and not rev:
                 sorting_comp = 'modified'
                 sorting_func = lambda a, b: a - b
@@ -228,7 +234,7 @@ class FileList():
                 sorting_func = lambda a, b: int(sorted([a, b]) == [a, b])
             elif sort_by == '!n' or (sort_by == 'n' and rev):
                 sorting_comp = 'name'
-                sorting_func = lambda a, b: int(sorted([a, b]) == [a, b])
+                sorting_func = lambda a, b: int(sorted([a, b], key=lambda x: x.encode(sort_encoding)) == [a, b])
             elif sort_by == '!t' or (sort_by == 't' and rev):
                 sorting_comp = 'modified'
                 sorting_func = lambda a, b: b - a

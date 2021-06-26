@@ -18,7 +18,7 @@
 - 本地化，`special:strings`
 - 一些宏，`special:alias`
 
-🕳 仍不可用的功能：
+🕳 计划功能：
 
 - 虚拟文件系统（VFS）
 - 文件操作
@@ -40,9 +40,9 @@
 
 ## 开发者信息
 
-👀 此作品现部分可用，不过还不能正式投入使用。
+👀 此作品还不能正式投入使用。但是，试一试吧！
 
-如果您有兴趣测试，可以：
+如果您有兴趣测试，可以使用一份 release，或者：
 
 1. 安装 [Werkzeug](https://pypi.org/project/Werkzeug/#files)。可以使用 `pip`，或者将下载的压缩包中的文件夹 `Werkzeug-(版本)/src/werkzeug` 放入 clone 的 repo 内。
 
