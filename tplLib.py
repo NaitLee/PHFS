@@ -3,7 +3,7 @@ import datetime, os, random, shutil, time
 
 from classesLib import TplSection, UniParam, MacroResult, MacroToCallable, Page, ItemEntry, FileList, object_from_dict
 from scriptLib import Commands
-from helpersLib import replace_str, read_ini, concat_dict, concat_list, purify, smartsize, sort
+from helpersLib import replace_str, read_ini, concat_dict, concat_list, purify, smartsize, sort, join_path
 from cfgLib import Config
 
 class MacroNotClosedProperly(Exception):
@@ -44,8 +44,8 @@ class Interpreter():
             'sequencial': lambda p: MacroResult('0'),
             'number-addresses-ever': lambda p: MacroResult('0'),
             'port': lambda p: MacroResult(Config.port),
-            'folder': lambda p: MacroResult(p.request.path_virtual_dir if p.request != None else ''),
-            'encoded-folder': lambda p: MacroResult(purify(p.request.path_virtual_dir) if p.request != None else '')
+            'folder': lambda p: MacroResult(join_path(p.request.path_virtual_dir, '/') if p.request != None else ''),
+            'encoded-folder': lambda p: MacroResult(purify(join_path(p.request.path_virtual_dir, '/')) if p.request != None else '')
         }
         self.sections = object_from_dict({
             '_empty': TplSection('', [], {}),

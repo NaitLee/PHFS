@@ -100,7 +100,8 @@ class PHFSServer():
                         else:
                             items_file.append(i.path)
             path_real_dir = request.path_real_dir + '/'
-            paths = [x.replace('\\', '/') for x in (items_folder + items_file)]
+            shown_files = [x for x in (items_folder + items_file) if x[0:1] != '.'] if Config.hide_dots else (items_folder + items_file)
+            paths = [x.replace('\\', '/') for x in shown_files]
             items = [ItemEntry(x, x, path_real_dir) for x in paths]
             filelist = FileList(items)
             uni_param.filelist = filelist
@@ -133,7 +134,8 @@ class PHFSServer():
                         else:
                             items_file.append(i.path)
             path_real_dir = request.path_real_dir + '/'
-            paths = [x.replace('\\', '/') for x in (items_folder + items_file)]
+            shown_files = [x for x in (items_folder + items_file) if x[0:1] != '.'] if Config.hide_dots else (items_folder + items_file)
+            paths = [x.replace('\\', '/') for x in shown_files]
             items = [ItemEntry(x, x, path_real_dir) for x in paths]
             filelist = FileList(items)
             uni_param.filelist = filelist
@@ -158,7 +160,8 @@ class PHFSServer():
                 tmp = tempfile.TemporaryFile(mode='w+b')
                 tar = tarfile.open(mode='w', fileobj=tmp)
                 path_real = request.path_real_dir + '/'
-                for i in os.listdir(path_real):
+                shown_files = [x for x in os.listdir(request.path_real_dir) if x[0:1] != '.'] if Config.hide_dots else os.listdir(request.path_real_dir)
+                for i in shown_files:
                     is_recursive = 'recursive' in request.args or bool(Config.recur_archive)
                     tar.add(path_real + i, i, recursive=is_recursive)
                 tar.close()     # Pointer is at the end of file
@@ -167,7 +170,8 @@ class PHFSServer():
             elif command == 'files.lst':
                 uni_param.interpreter = self.itp_filelist
                 path_real_dir = request.path_real_dir + '/'
-                paths = [join_path(path_real_dir, x) for x in os.listdir(path_real_dir)]
+                shown_files = [x for x in os.listdir(request.path_real_dir) if x[0:1] != '.'] if Config.hide_dots else os.listdir(request.path_real_dir)
+                paths = [join_path(path_real_dir, x) for x in shown_files]
                 items = [ItemEntry(x, x, path_real_dir) for x in paths]
                 filelist = FileList(items)
                 uni_param.filelist = filelist
@@ -180,7 +184,8 @@ class PHFSServer():
                 if os.path.isdir(resource):
                     if 'no list' not in uni_param.interpreter.sections[''].params:
                         path_real_dir = request.path_real_dir + '/'
-                        paths = [join_path(path_real_dir, x) for x in os.listdir(path_real_dir)]
+                        shown_files = [x for x in os.listdir(path_real_dir) if x[0:1] != '.'] if Config.hide_dots else os.listdir(path_real_dir)
+                        paths = [join_path(path_real_dir, x) for x in shown_files]
                         items = [ItemEntry(x, x, path_real_dir) for x in paths]
                         filelist = FileList(items)
                         uni_param.filelist = filelist
