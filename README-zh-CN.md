@@ -15,6 +15,7 @@
 - 文件列表，下载
 - 排序文件，打包下载
 - 上传，搜索
+- 账户、登录
 - 本地化，`special:strings`
 - 一些宏，`special:alias`
 
@@ -22,7 +23,7 @@
 
 - 虚拟文件系统（VFS）
 - 文件操作
-- 账户、登录、封禁、限制、……
+- 封禁、限制、……
 
 🍉 支持的平台:
 
@@ -48,11 +49,13 @@
 
 2. 安装 [WSGIserver](https://pypi.org/project/WSGIserver/#files)。可以使用 `pip`，或者将下载的压缩包中的文件夹 `WSGIserver-(version)/wsgiserver.py` 放入 clone 的 repo 内。
 
-3. 选择一个用于 2.4 的 HFS 模板，重命名为 `hfs.tpl` 并放入 repo。
+3. 获取 [sha256.js](https://github.com/AndersLindman/SHA256)，放入 repo 文件夹。
 
-4. 在 `hfs.ini` 中配置端口、基文件夹、允许上传的文件夹。
+4. 选择一个用于 2.4 的 HFS 模板，重命名为 `hfs.tpl` 并放入 repo。
 
-5. 要开始一个服务器，用 `python3` 打开 `run.py`；要进行开发工作，打开 `test.py`。
+5. 在 `hfs.ini` 中配置端口、基文件夹、允许上传的文件夹、账户。注：原 HFS 的 `hfs.ini` 与 PHFS 不兼容。
+
+6. 要开始一个服务器，用 `python3` 打开 `run.py`；要进行开发工作，打开 `test.py`。
 
 可用的一些模板：
 
@@ -69,15 +72,17 @@
 
 - 要在 Android QPython 3L 上使用：
   - 将 repo 放置于 `/sdcard/qpython/projects3`，确保文件夹层级正确。
+  - 跟随试用步骤获取需要的文件。
   - 将 `run.py` 重命名为 `main.py`。
   - 在 QPython 3L app 内，进入 Programs，在 Projects 标签，选择 repo 名称并 Run。
 
 ### 文件
 
-- `test.py`: 开始一个服务器用于开发、调试。它包含 werkzeug 的重载功能。
 - `run.py`: 开始一个简单服务器。它可用于 aarch64 架构的 [pypy](https://www.pypy.org/)。
 - `hfs.ini`: 一些如端口的配置在这里。此时您可以配置基文件夹作为根目录。
+- `hash.py`: 直接运行此文件以获取密码哈希值。
 
+- `test.py`: 开始一个服务器用于开发、调试。它包含 werkzeug 的重载功能。
 - `_test_macro.py`: 运行指定在命令行 argv1 的宏。
 
 - `cfgLib.py`: 对象 `Config` 在此文件中。
@@ -87,3 +92,4 @@
 - `scriptLib.py`: 当运行宏或符号时，通常会调用这里的函数。
 - `serverLib.py`: 定义了一个运行如 HFS 的 WSGI 应用。
 - `tplLib.py`: 这是模板解释器。
+- `hashLib.py`: 此文件中的类可获取文件哈希值（基哈希、会话哈希）。

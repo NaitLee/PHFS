@@ -73,6 +73,7 @@ class UniParam():
     interpreter = None
     request = None
     filelist = None
+    accounts = {}
     def __init__(self, params: list, **kwargs):
         self.params = params
         for i in kwargs:

@@ -44,6 +44,7 @@ class Commands():
             'urlvar': self.urlvar,
             'postvar': self.postvar,
             'cut': self.cut,
+            'cookie': lambda p: MacroResult(p.request.cookies.get(p.params[1], '')),
             '_unsupported': lambda param: MacroResult(','.join(param.params))
         }
     def __getitem__(self, key):
@@ -58,7 +59,7 @@ class Commands():
     def sym_style(self, param: UniParam):
         return param.interpreter.get_section('style', param, True, True)
     def sym_user(self, param: UniParam):
-        return MacroResult('')
+        return MacroResult(param.accounts.get(param.request.host, ('', ''))[0])
     def urlvar(self, param: UniParam):
         return MacroResult(param.request.args.get(param.params[1], self.FALSE))
     def postvar(self, param: UniParam):

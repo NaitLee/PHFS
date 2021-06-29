@@ -7,5 +7,5 @@ from serverLib import PHFSServer
 from wsgiserver import WSGIServer
 
 if __name__ == '__main__':
-    server = WSGIServer(PHFSServer(), Config.host or ('0.0.0.0' if not Config.ipv6 else '::'), int(Config.port))
+    server = WSGIServer(PHFSServer(), Config.host, int(Config.port))
     server.start()

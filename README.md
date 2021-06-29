@@ -15,6 +15,7 @@
 - Filelist, download
 - Sorting files, Archiving
 - Upload, Search
+- Accounts, Login
 - Translations, `special:strings`
 - Some macros, `special:alias`
 
@@ -22,7 +23,7 @@
 
 - Virtual File System
 - File actions
-- Accounts, Login, Ban, Limits, ...
+- Ban, Limits, ...
 
 🍉 Supported platforms:
 
@@ -48,11 +49,13 @@ You can try by using a release, or:
 
 2. Install [WSGIserver](https://pypi.org/project/WSGIserver/#files) by either using `pip` or placing the file `WSGIserver-(version)/wsgiserver.py` from downloaded archive to cloned repo.
 
-3. Pick a HFS template (for HFS 2.4), rename it to `hfs.tpl` and place into cloned repo.
+3. Get [sha256.js](https://github.com/AndersLindman/SHA256), place into repo folder.
 
-4. Configure port, base folder and upload-allowed folders in `hfs.ini`.
+4. Pick a HFS template (for HFS 2.4), rename it to `hfs.tpl` and place into cloned repo.
 
-5. For running a server, open `run.py`; for developing, open `test.py`.
+5. Configure port, base folder, upload-allowed folders and accounts in `hfs.ini`. Note: `hfs.ini` of original HFS is not compatible to PHFS.
+
+6. For running a server, open `run.py`; for developing, open `test.py`.
 
 Template choices:
 
@@ -66,21 +69,24 @@ Template choices:
 
 - To use in QPython 3L on Android:
   - Put repo into folder `/sdcard/qpython/projects3`, ensure folder is not nested.
+  - Follow trial steps, prepare all required files.
   - Rename `run.py` to `main.py`.
   - In QPython 3L app, go to Programs, in Projects tab, select repo name then run.
 
 ### Files
 
-- `test.py`: Run a server for testing, debugging. It also contains werkzeug's reload feature.
 - `run.py`: Run a simple server. Has no debug feature, but works on [pypy](https://www.pypy.org/) on aarch64 architecture.
 - `hfs.ini`: Some configs, like port, are here. Currently you can set a base path as the root dir of served pages, also can set upload-allowed paths.
+- `hash.py`: Hash a password by executing this directly.
 
+- `test.py`: Run a server for testing, debugging. It also contains werkzeug's reload feature.
 - `_test_macro.py`: Run & test a macro, by entering as argv1 in commandline.
 
-- `cfgLib.py`: The `Config` object is inside this file.
-- `classesLib.py`: Some useful `class`es are here.
+- `cfgLib.py`: The `Config` and `Account` object is inside this file.
+- `classesLib.py`: Some useful classes are here.
 - `helpersLib.py`: Some useful functions are here.
 - `mimeLib.py`: Manages MIME types. Get a defined MIME type with something like `mimeLib.getmime('*.html')`. You can define your own MIMEs in `mime.ini`.
 - `scriptLib.py`: When executing a macro/symbol, usually functions in this file will be called.
 - `serverLib.py`: Defines a WSGI application, which acts like original HFS.
 - `tplLib.py`: The template is interpreted by this.
+- `hashLib.py`: Classes inside can hash passwords from/to base-hash/token-hash.

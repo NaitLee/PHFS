@@ -3,7 +3,7 @@ import datetime, os, random, shutil, time
 
 from classesLib import TplSection, UniParam, MacroResult, MacroToCallable, Page, ItemEntry, FileList, object_from_dict
 from scriptLib import Commands
-from helpersLib import replace_str, read_ini, concat_dict, concat_list, purify, smartsize, sort, join_path
+from helpersLib import replace_str, read_ini, concat_dict, concat_list, purify, smartsize, sort, join_path, strip_starting_spaces
 from cfgLib import Config
 
 class MacroNotClosedProperly(Exception):
@@ -134,7 +134,7 @@ class Interpreter():
         return self.parse_text(section.content, param) if do_parse else MacroResult(section.content)
     def section_to_page(self, section_name, param: UniParam):
         # Deep copy param, prevent modifying original one
-        uni_param = UniParam(param.params, interpreter=param.interpreter, request=param.request, filelist=param.filelist)
+        uni_param = UniParam(param.params, interpreter=param.interpreter, request=param.request, filelist=param.filelist, accounts=param.accounts)
         section = self.get_section(section_name, uni_param, True, True)
         if section == None:
             return self.get_page('error-page', UniParam(['not found', 404], interpreter=self, request=param.request))
@@ -182,8 +182,8 @@ class Interpreter():
         elif page_name == 'error-page':
             error_type = param.params[0]
             error_status = param.params[1]
-            base_page = self.get_section('error-page', UniParam([], symbols={}, interpreter=self))
-            content = self.get_section(error_type, UniParam([], symbols={}, interpreter=self))
+            base_page = self.get_section('error-page', UniParam([], symbols={}, request=param.request, interpreter=self, accounts=param.accounts))
+            content = self.get_section(error_type, UniParam([], symbols={}, request=param.request, interpreter=self, accounts=param.accounts))
             headers = concat_dict(base_page.headers, content.headers)
             cookies = concat_list(base_page.cookies, content.cookies)
             if 'Location' in headers:
@@ -275,6 +275,7 @@ class Interpreter():
     def unquote(self, text: str, param: UniParam, do_parse=True) -> MacroResult:
         if text[0:2] == '{:' and text[-2:] == ':}':
             text = text[2:-2]
+        text = strip_starting_spaces(text)
         return self.parse_text(text, param) if do_parse else MacroResult(text)
     shortcuts = {
         '!': 'translation',
@@ -302,7 +303,7 @@ class Interpreter():
         params = self.to_normal_macro(params)
         if params[-1].split('/')[-1] == params[0] and len(params) > 2:
             params[-1] = '/'.join(params[-1].split('/')[0:-1])
-        # params = list(map(lambda x: x.strip(), params))
+        params = [strip_starting_spaces(x) for x in params]
         param.params = params
         result = self.handler[params[0]](param)
         return result
