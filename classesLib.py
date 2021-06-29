@@ -137,7 +137,7 @@ class FileList():
     """
     items: list
     def __init__(self, items: list):
-        self.items = items
+        self.items = items # sorted(items, key=lambda x: x.stat().st_ino)
         self.count = len(items)
         self.count_folders = len([True for x in items if x.is_dir()])
         self.count_files = self.count - self.count_folders

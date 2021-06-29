@@ -25,10 +25,6 @@ class PHFSStatistics():
     # Accounts are saved as a dict, key is IP and value is tuple (username, sid)
     accounts = {}
 
-class IllegalFilenameError(Exception):
-    """ Upload: Filename is illegal
-    """
-
 class PHFSServer():
     request: PHFSRequest
     statistics = PHFSStatistics()
@@ -100,7 +96,7 @@ class PHFSServer():
                 elif token_hash != expected_hash:
                     response = Response('bad password', 200)
                 else:
-                    sid = hashlib.sha256(bytes(random.randbytes(32))).hexdigest()
+                    sid = hashlib.sha256(bytes([random.randint(0, 255) for _ in range(32)])).hexdigest()
                     self.statistics.accounts[request.host] = (account_name, sid)
                     response = Response('ok', 200, {'Set-Cookie': 'HFS_SID_=%s; HttpOnly' % sid})
             elif mode == 'logout':
