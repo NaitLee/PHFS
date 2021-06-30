@@ -73,7 +73,7 @@ class UniParam():
     interpreter = None
     request = None
     filelist = None
-    accounts = {}
+    statistics = None
     def __init__(self, params: list, **kwargs):
         self.params = params
         for i in kwargs:
@@ -98,11 +98,13 @@ class MacroResult():
             setattr(self, i, kwargs[i])
 
 class MacroToCallable():
-    def __init__(self, macro_str: str, interpreter):
-        if not (macro_str[0:2] == '{.' and macro_str[-2:] == '.}'):
-            macro_str = '{.' + macro_str + '.}'
+    def __init__(self, macro_str: str, param: UniParam, possible_miss_markers=False):
+        macro_str = param.interpreter.unquote(macro_str, param, False).content
+        if possible_miss_markers:
+            if not (macro_str[0:2] == '{.' and macro_str[-2:] == '.}'):
+                macro_str = '{.' + macro_str + '.}'
         self.macro_str = macro_str
-        self.interpreter = interpreter
+        self.interpreter = param.interpreter
     def __call__(self, param: UniParam) -> MacroResult:
         new_str = self.macro_str    # Prevent changing original string
         for i, j in enumerate(param.params):

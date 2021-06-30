@@ -108,12 +108,12 @@ class Interpreter():
             self.translations[pair[0]] = pair[1]
         alias_from_txt = read_ini('alias.txt')
         for i in alias_from_txt:
-            self.handler[i] = MacroToCallable(alias_from_txt[i], self)
+            self.handler[i] = MacroToCallable(alias_from_txt[i], UniParam([], interpreter=self), True)
         for i in self.sections.get('special:alias', self.sections['_empty']).content.split('\n'):
             pair = i.split('=', 1)
             if len(pair) < 2:
                 continue
-            self.handler[pair[0]] = MacroToCallable(pair[1], self)
+            self.handler[pair[0]] = MacroToCallable(pair[1], UniParam([], interpreter=self), True)
         return
     def get_list(self, param: UniParam):
         """ Get filelist, called by symbol `%list%`.  
@@ -134,7 +134,7 @@ class Interpreter():
         return self.parse_text(section.content, param) if do_parse else MacroResult(section.content)
     def section_to_page(self, section_name, param: UniParam):
         # Deep copy param, prevent modifying original one
-        uni_param = UniParam(param.params, interpreter=param.interpreter, request=param.request, filelist=param.filelist, accounts=param.accounts)
+        uni_param = UniParam(param.params, interpreter=param.interpreter, request=param.request, filelist=param.filelist, statistics=param.statistics)
         section = self.get_section(section_name, uni_param, True, True)
         if section == None:
             return self.get_page('error-page', UniParam(['not found', 404], interpreter=self, request=param.request))
@@ -182,8 +182,8 @@ class Interpreter():
         elif page_name == 'error-page':
             error_type = param.params[0]
             error_status = param.params[1]
-            base_page = self.get_section('error-page', UniParam([], symbols={}, request=param.request, interpreter=self, accounts=param.accounts))
-            content = self.get_section(error_type, UniParam([], symbols={}, request=param.request, interpreter=self, accounts=param.accounts))
+            base_page = self.get_section('error-page', UniParam([], symbols={}, request=param.request, interpreter=self, statistics=param.statistics))
+            content = self.get_section(error_type, UniParam([], symbols={}, request=param.request, interpreter=self, statistics=param.statistics))
             headers = concat_dict(base_page.headers, content.headers)
             cookies = concat_list(base_page.cookies, content.cookies)
             if 'Location' in headers:
@@ -285,19 +285,18 @@ class Interpreter():
     }
     operation_signs = ('<>', '!=', '<=', '>=', '<', '>', '=')
     def to_normal_macro(self, params: list):
-        params = list(map(lambda s: s.strip(), params))
+        params = [x.strip() for x in params]
         if params[0] == '':
             return params
         if params[0][0] in self.shortcuts:
             params.append(params[0][1:])
             params[0] = self.shortcuts[params[0][0]]
-        else:
-            for i in self.operation_signs:
-                if i in params[0] and i != params[0]:   # TODO: {.?value = 1.} -> {.urlvar|value = 1.} -> {.=|{.urlvar|value.}|1.}
-                    p = params[0].split(i)
-                    params = [i, p[0], p[1]]
-                    break
-        params = list(map(lambda s: s.strip(), params))
+        for i in self.operation_signs:
+            if i in params[0] and i != params[0]:
+                p = params[0].split(i)
+                params = [i, p[0], p[1]]
+                break
+        params = [x.strip() for x in params]
         return params
     def exec_macro(self, params: list, param: UniParam) -> MacroResult:
         params = self.to_normal_macro(params)

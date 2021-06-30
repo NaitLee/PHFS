@@ -1,6 +1,6 @@
 
 import datetime, time, re, os
-from classesLib import MacroResult, UniParam
+from classesLib import MacroResult, UniParam, MacroToCallable
 from helpersLib import concat_dict, wildcard2re, if_upload_allowed_in
 from cfgLib import Config
 
@@ -23,16 +23,28 @@ class Commands():
             'if': self.macro_if,
             'if not': self.macro_if_not,
             'not': self.macro_not,
-            'breadcrumbs': self.breadcrumbs,
+            'and': self.macro_and,
+            'or': self.macro_or,
+            'xor': self.macro_xor,
+            'between': self.between,
+            'between!': self.between_excluded,
             'switch': self.macro_switch,
+            'for': self.macro_for,
+            'for each': self.macro_for_each,
+            'call': self.macro_call,
             'break': self.macro_break,
             'replace': self.replace,
             'translation': self.translation,
             'section': self.section,
             'comment': self.comment,
+            'breadcrumbs': self.breadcrumbs,
             '=': self.equal,
             '!=': self.not_equal,
             '<>': self.not_equal,
+            '>': self.greater_than,
+            '<': self.lesser_than,
+            '>=': self.greater_or_equal_than,
+            '<=': self.lesser_or_equal_than,
             'disconnect': self.disconnect,
             'add header': self.add_header,
             'time': self.time,
@@ -44,7 +56,7 @@ class Commands():
             'urlvar': self.urlvar,
             'postvar': self.postvar,
             'cut': self.cut,
-            'cookie': lambda p: MacroResult(p.request.cookies.get(p.params[1], '')),
+            'cookie': self.cookie,
             '_unsupported': lambda param: MacroResult(','.join(param.params))
         }
     def __getitem__(self, key):
@@ -59,11 +71,73 @@ class Commands():
     def sym_style(self, param: UniParam):
         return param.interpreter.get_section('style', param, True, True)
     def sym_user(self, param: UniParam):
-        return MacroResult(param.accounts.get(param.request.host, ('', ''))[0])
+        return MacroResult(param.statistics.accounts.get(param.request.host, ('', ''))[0])
+    def between(self, param: UniParam):
+        p = param.params
+        return MacroResult(self._bool(float(p[1]) <= float(p[2]) <= float(p[3])))
+    def between_excluded(self, param: UniParam):
+        p = param.params
+        return MacroResult(self._bool(float(p[1]) < float(p[2]) < float(p[3])))
+    def macro_call(self, param: UniParam):
+        p = param.params
+        if self._have_variable(p[1], param):
+            return MacroResult(self._get_variable(p[1], param))
+        elif p[1] in param.interpreter.handler:
+            param.params = param.params[1:]
+            return MacroResult(param.interpreter.handler(param))
+    def _set_variable(self, key: str, value: str, param: UniParam) -> str:
+        if key[0:1] == '#':
+            param.statistics.variables[key] = value
+        else:
+            param.request.variables[key] = value
+    def _get_variable(self, key: str, param: UniParam) -> str:
+        if key in param.request.variables:
+            return param.request.variables.get(key, self.FALSE)
+        elif key in param.statistics.variables:
+            return param.statistics.variables.get(key, self.FALSE)
+    def _have_variable(self, key: str, param: UniParam) -> bool:
+        return key in param.request.variables or key in param.statistics.variables
+    def macro_for(self, param: UniParam):
+        p = param.params
+        var_name = p[1]
+        var_step = int(p[4]) if len(p) > 5 else 1
+        var_range = range(int(p[2]), int(p[3]), var_step)
+        macro_body = param.interpreter.unquote(p[5] if len(p) > 5 else p[4], param, False).content
+        result = []
+        for i in var_range:
+            self._set_variable(var_name, str(i), param)
+            result.append(param.interpreter.parse_text(macro_body, param))
+        return MacroResult(''.join([x.content for x in result]))
+    def macro_for_each(self, param: UniParam):
+        p = param.params
+        var_name = p[1]
+        var_range = p[2:-1]
+        macro_body = param.interpreter.unquote(p[-1], param, False).content
+        result = []
+        for i in var_range:
+            self._set_variable(var_name, i, param)
+            result.append(param.interpreter.parse_text(macro_body, param))
+        return MacroResult(''.join([x.content for x in result]))
+    def macro_and(self, param: UniParam):
+        p = param.params
+        status = self.FALSE
+        for i in range(1, len(p) - 1):
+            status = p[i] and p[i + 1]
+        return MacroResult(status)
+    def macro_or(self, param: UniParam):
+        p = param.params
+        status = self.FALSE
+        for i in range(1, len(p) - 1):
+            status = p[i] or p[i + 1]
+        return MacroResult(status)
+    def macro_xor(self, param: UniParam):
+        return MacroResult(self._bool(self._judge(param.params[1]) == self._judge(param.params[2])))
     def urlvar(self, param: UniParam):
         return MacroResult(param.request.args.get(param.params[1], self.FALSE))
     def postvar(self, param: UniParam):
-        return MacroResult(param.request.args.get(param.params[1], self.FALSE))
+        return MacroResult(param.request.form.get(param.params[1], self.FALSE))
+    def cookie(self, param: UniParam):
+        return MacroResult(param.request.cookies.get(param.params[1], self.FALSE))
     def cut(self, param: UniParam):
         if len(param.params[1]) == 0:
             param.params[1] = '0'
@@ -146,6 +220,34 @@ class Commands():
         status = True
         for i in range(1, len(p) - 1):
             if p[i] == p[i + 1]:
+                status = False
+        return MacroResult(self._bool(status))
+    def greater_than(self, param: UniParam):
+        p = param.params
+        status = True
+        for i in range(1, len(p) - 1):
+            if float(p[i]) <= float(p[i + 1]):
+                status = False
+        return MacroResult(self._bool(status))
+    def lesser_than(self, param: UniParam):
+        p = param.params
+        status = True
+        for i in range(1, len(p) - 1):
+            if float(p[i]) >= float(p[i + 1]):
+                status = False
+        return MacroResult(self._bool(status))
+    def greater_or_equal_than(self, param: UniParam):
+        p = param.params
+        status = True
+        for i in range(1, len(p) - 1):
+            if float(p[i]) < float(p[i + 1]):
+                status = False
+        return MacroResult(self._bool(status))
+    def lesser_or_equal_than(self, param: UniParam):
+        p = param.params
+        status = True
+        for i in range(1, len(p) - 1):
+            if float(p[i]) > float(p[i + 1]):
                 status = False
         return MacroResult(self._bool(status))
     def disconnect(self, param: UniParam):

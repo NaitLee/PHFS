@@ -11,8 +11,8 @@ from helpersLib import get_dirname, if_upload_allowed_in, purify_filename, wildc
 builtin_sections = ('sha256.js')
 
 class PHFSRequest(Request):
-    path_virtual: str = '/'
-    path_real: str = '/'
+    # Session variables for macro execution
+    variables = {}
     def __init__(self, environ, path_virtual='/', path_real='/'):
         super().__init__(environ)
         self.path_virtual = path_virtual
@@ -24,6 +24,8 @@ class PHFSRequest(Request):
 class PHFSStatistics():
     # Accounts are saved as a dict, key is IP and value is tuple (username, sid)
     accounts = {}
+    # Global variables for macro execution
+    variables = {}
 
 class PHFSServer():
     request: PHFSRequest
@@ -37,10 +39,10 @@ class PHFSServer():
     def __init__(self):
         pass
     def not_found_response(self, request: PHFSRequest) -> Response:
-        page = self.interpreter.get_page('error-page', UniParam(['not found', 404], interpreter=self.interpreter, request=request, accounts=self.statistics.accounts))
+        page = self.interpreter.get_page('error-page', UniParam(['not found', 404], interpreter=self.interpreter, request=request, statistics=self.statistics))
         return Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime('*.html'))
     def unauth_response(self, request: PHFSRequest) -> Response:
-        page = self.interpreter.get_page('error-page', UniParam(['unauthorized', 403], interpreter=self.interpreter, request=request, accounts=self.statistics.accounts))
+        page = self.interpreter.get_page('error-page', UniParam(['unauthorized', 403], interpreter=self.interpreter, request=request, statistics=self.statistics))
         return Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime('*.html'))
     def get_current_account(self, request: PHFSRequest) -> tuple:
         return self.statistics.accounts.get(request.host, ('', ''))
@@ -52,7 +54,7 @@ class PHFSServer():
         resource = join_path(Config.base_path, path)
         request = PHFSRequest(environ, path, resource)
         self.request = request
-        uni_param = UniParam([], interpreter=self.interpreter, request=request, filelist=FileList([]), accounts=self.statistics.accounts)
+        uni_param = UniParam([], interpreter=self.interpreter, request=request, filelist=FileList([]), statistics=self.statistics)
         levels_virtual = path.split('/')
         # levels_real = resource.split('/')
         if not Account.can_access(self.get_current_account(request)[0], resource):
@@ -77,7 +79,7 @@ class PHFSServer():
                             upload_result[filename] = (True, '')
                         except Exception as e:
                             upload_result[filename] = (False, str(e))
-                    page = self.interpreter.get_page('upload-results', UniParam([upload_result], interpreter=self.interpreter, request=request, accounts=self.statistics.accounts))
+                    page = self.interpreter.get_page('upload-results', UniParam([upload_result], interpreter=self.interpreter, request=request, statistics=self.statistics))
                     response = Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime('*.html'))
                 return response(environ, start_response)
         if 'mode' in request.args:
