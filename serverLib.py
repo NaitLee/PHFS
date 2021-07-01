@@ -22,6 +22,8 @@ class PHFSRequest(Request):
         self.build_time_start = time.time()
 
 class PHFSStatistics():
+    # Listing completed? for {.after the list.}
+    listing_completed = False
     # Accounts are saved as a dict, key is IP and value is tuple (username, sid)
     accounts = {}
     # Global variables for macro execution

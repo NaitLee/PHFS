@@ -119,6 +119,7 @@ class Interpreter():
         """ Get filelist, called by symbol `%list%`.  
         """
         page_content = param.filelist.to_list(param)
+        param.request.listing_completed = True
         return Page(page_content, 200)
     def get_section(self, section_name: str, param: UniParam, do_parse=True, force=False) -> MacroResult:
         """ Get a section from template. What this returns is a `MacroResult`.   
@@ -275,8 +276,12 @@ class Interpreter():
     def unquote(self, text: str, param: UniParam, do_parse=True) -> MacroResult:
         if text[0:2] == '{:' and text[-2:] == ':}':
             text = text[2:-2]
-        text = strip_starting_spaces(text)
-        return self.parse_text(text, param) if do_parse else MacroResult(text)
+        # text = strip_starting_spaces(text)    # No need
+        # Deep copy param, prevent modifying original one
+        uni_param = UniParam(param.params, interpreter=param.interpreter, request=param.request, filelist=param.filelist, statistics=param.statistics)
+        return self.parse_text(text, uni_param) if do_parse else MacroResult(text)
+    def is_quoted(self, text: str) -> bool:
+        return text[0:2] == '{:' and text[-2:] == ':}'
     shortcuts = {
         '!': 'translation',
         '$': 'section',

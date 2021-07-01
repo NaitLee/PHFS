@@ -31,6 +31,7 @@ class Commands():
             'switch': self.macro_switch,
             'for': self.macro_for,
             'for each': self.macro_for_each,
+            'while': self.macro_while,
             'call': self.macro_call,
             'break': self.macro_break,
             'replace': self.replace,
@@ -45,6 +46,9 @@ class Commands():
             '<': self.lesser_than,
             '>=': self.greater_or_equal_than,
             '<=': self.lesser_or_equal_than,
+            'set': self.macro_set,
+            'inc': self.inc,
+            'dec': self.dec,
             'disconnect': self.disconnect,
             'add header': self.add_header,
             'time': self.time,
@@ -64,9 +68,9 @@ class Commands():
     def __setitem__(self, key, value):
         self.commands_map[key] = value
         return
-    def _judge(self, value):
+    def _judge(self, value: str) -> bool:
         return False if value.strip() in self.FALSE_VALUES else True
-    def _bool(self, value):
+    def _bool(self, value: bool) -> str:
         return self.TRUE if value else self.FALSE
     def sym_style(self, param: UniParam):
         return param.interpreter.get_section('style', param, True, True)
@@ -118,6 +122,18 @@ class Commands():
             self._set_variable(var_name, i, param)
             result.append(param.interpreter.parse_text(macro_body, param))
         return MacroResult(''.join([x.content for x in result]))
+    def macro_while(self, param: UniParam):
+        is_variable = not param.interpreter.is_quoted(param.params[1])
+        result = []
+        while True:
+            if is_variable:
+                if not self._judge(self._get_variable(param.params[1], param)):
+                    break
+            else:
+                if not self._judge(param.interpreter.unquote(param.params[1], param, True).content):
+                    break
+            result.append(param.interpreter.unquote(param.params[2], param, True))
+        return MacroResult(''.join([x.content for x in result]))
     def macro_and(self, param: UniParam):
         p = param.params
         status = self.FALSE
@@ -138,6 +154,21 @@ class Commands():
         return MacroResult(param.request.form.get(param.params[1], self.FALSE))
     def cookie(self, param: UniParam):
         return MacroResult(param.request.cookies.get(param.params[1], self.FALSE))
+    def macro_set(self, param: UniParam):
+        self._set_variable(param.params[1], param.params[2], param)
+        return MacroResult('')
+    def inc(self, param: UniParam):
+        if len(param.params) > 2:
+            self._set_variable(param.params[1], str(int(self._get_variable(param.params[1], param)) + int(param.params[2])), param)
+        elif len(param.params) == 2:
+            self._set_variable(param.params[1], str(int(self._get_variable(param.params[1], param)) + 1), param)
+        return MacroResult('')
+    def dec(self, param: UniParam):
+        if len(param.params) > 2:
+            self._set_variable(param.params[1], str(int(self._get_variable(param.params[1], param)) - int(param.params[2])), param)
+        elif len(param.params) == 2:
+            self._set_variable(param.params[1], str(int(self._get_variable(param.params[1], param)) - 1), param)
+        return MacroResult('')
     def cut(self, param: UniParam):
         if len(param.params[1]) == 0:
             param.params[1] = '0'
