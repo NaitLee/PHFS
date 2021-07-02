@@ -58,7 +58,7 @@ def parse_ini(c: str):
     for i in c.split('\n'):
         if '=' not in i or len(i) == 0:
             continue
-        j = i.split('=')
+        j = i.split('=', 1)
         d[j[0]] = j[1]
     return d
 

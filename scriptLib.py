@@ -26,12 +26,11 @@ class Commands():
             'and': self.macro_and,
             'or': self.macro_or,
             'xor': self.macro_xor,
-            'between': self.between,
-            'between!': self.between_excluded,
             'switch': self.macro_switch,
             'for': self.macro_for,
             'for each': self.macro_for_each,
             'while': self.macro_while,
+            'after the list': self.after_the_list,
             'call': self.macro_call,
             'break': self.macro_break,
             'replace': self.replace,
@@ -76,12 +75,6 @@ class Commands():
         return param.interpreter.get_section('style', param, True, True)
     def sym_user(self, param: UniParam):
         return MacroResult(param.statistics.accounts.get(param.request.host, ('', ''))[0])
-    def between(self, param: UniParam):
-        p = param.params
-        return MacroResult(self._bool(float(p[1]) <= float(p[2]) <= float(p[3])))
-    def between_excluded(self, param: UniParam):
-        p = param.params
-        return MacroResult(self._bool(float(p[1]) < float(p[2]) < float(p[3])))
     def macro_call(self, param: UniParam):
         p = param.params
         if self._have_variable(p[1], param):
@@ -101,11 +94,14 @@ class Commands():
             return param.statistics.variables.get(key, self.FALSE)
     def _have_variable(self, key: str, param: UniParam) -> bool:
         return key in param.request.variables or key in param.statistics.variables
+    def after_the_list(self, param: UniParam):
+        # Since filelist is done just when first symbol parse, this currently does no work
+        return param.interpreter.unquote(param.params[1], param, True) if param.request.listing_completed else MacroResult('')
     def macro_for(self, param: UniParam):
         p = param.params
         var_name = p[1]
         var_step = int(p[4]) if len(p) > 5 else 1
-        var_range = range(int(p[2]), int(p[3]), var_step)
+        var_range = range(int(p[2]), int(p[3]) + 1, var_step)
         macro_body = param.interpreter.unquote(p[5] if len(p) > 5 else p[4], param, False).content
         result = []
         for i in var_range:
