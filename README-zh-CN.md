@@ -10,40 +10,27 @@
 
 ----
 
-👏 可用功能：
+| 👏 可用功能： | 🕳 计划功能： |
+| ---- | ---- |
+| 文件列表，下载 | 虚拟文件系统（VFS） |
+| 排序文件，打包下载 | 文件操作 |
+| 上传，搜索 | 封禁、限制 |
+| 账户、登录 | 其他 |
 
-- 文件列表，下载
-- 排序文件，打包下载
-- 上传，搜索
-- 账户、登录
-- 本地化，`special:strings`
-- 一些宏，`special:alias`
-
-🕳 计划功能：
-
-- 虚拟文件系统（VFS）
-- 文件操作
-- 封禁、限制、……
 
 🍉 支持的平台:
 
-- 所有 Python 3.7 支持的 x86, x64 平台：
-  - Windows 7 及以上
-  - GNU/Linux, *nix, *BSD
-  - ……
-
-- 一些 ARM 平台:
-  - Android，使用 [QPython 3L](https://www.qpython.org/)
-  - ARM 开发板，如树莓派，使用 [PyPy](https://www.pypy.org/)
-  - ……
-
-- 可能更多！
+- Windows 7 及以上
+- GNU/Linux, *nix, *BSD
+- Android，使用 [QPython 3L](https://www.qpython.org/)
+- ARM 开发板，如树莓派，使用 [PyPy](https://www.pypy.org/)
+- ……
 
 ## 开发者信息
 
 👀 此作品还不能正式投入使用。但是，试一试吧！
 
-如果您有兴趣测试，可以使用一份 release，或者：
+如果您有兴趣测试，可以使用一份 *[release](https://github.com/NaitLee/PHFS/releases)*，或者：
 
 1. 安装 [Werkzeug](https://pypi.org/project/Werkzeug/#files)。可以使用 `pip`，或者将下载的压缩包中的文件夹 `Werkzeug-(版本)/src/werkzeug` 放入 clone 的 repo 内。
 
@@ -71,14 +58,13 @@
   - QQ 交流群号：676460276
 
 - 要在 Android QPython 3L 上使用：
-  - 将 repo 放置于 `/sdcard/qpython/projects3`，确保文件夹层级正确。
-  - 跟随试用步骤获取需要的文件。
+  - 将一份 unix release 放置于 `/sdcard/qpython/projects3`，确保文件夹层级正确。
   - 将 `run.py` 重命名为 `main.py`。
-  - 在 QPython 3L app 内，进入 Programs，在 Projects 标签，选择 repo 名称并 Run。
+  - 在 QPython 3L app 内，进入 Programs，在 Projects 标签，选择 phfs-unix 并 Run。
 
 ### 文件
 
-- `run.py`: 开始一个简单服务器。它可用于 aarch64 架构的 [pypy](https://www.pypy.org/)。
+- `run.py`: 开始一个服务器。它可用于 aarch64 架构的 [pypy](https://www.pypy.org/)。
 - `hfs.ini`: 一些如端口的配置在这里。此时您可以配置基文件夹作为根目录。
 - `hash.py`: 直接运行此文件以获取密码哈希值。
 

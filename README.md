@@ -10,40 +10,27 @@
 
 ----
 
-👏 Done Features:
+| 👏 Done Features: | 🕳 To-do Features: |
+| ---- | ---- |
+| Filelist, download | Virtual File System |
+| Sorting files, Archiving | File actions |
+| Upload, Search | Ban, Limits |
+| Accounts, Login | Other |
 
-- Filelist, download
-- Sorting files, Archiving
-- Upload, Search
-- Accounts, Login
-- Translations, `special:strings`
-- Some macros, `special:alias`
-
-🕳 To-do Features:
-
-- Virtual File System
-- File actions
-- Ban, Limits, ...
 
 🍉 Supported platforms:
 
-- All x86, x64 platforms that Python 3.7 supports:
-  - Windows 7 and upper
-  - GNU/Linux, *nix, *BSD
-  - ...
-
-- Some ARM platforms:
-  - Android, with [QPython 3L](https://www.qpython.org/)
-  - ARM Boards like Raspberry Pi, with [PyPy](https://www.pypy.org/)
-  - ...
-
-- Maybe more!
+- Windows 7 and upper
+- GNU/Linux, *nix, *BSD
+- Android, with [QPython 3L](https://www.qpython.org/)
+- ARM Boards like Raspberry Pi, with [PyPy](https://www.pypy.org/)
+- ...
 
 ## Developer Notes
 
 👀 This project is not yet ready for production use. But, please, have a try!
 
-You can try by using a release, or:
+You can try by using a *[release](https://github.com/NaitLee/PHFS/releases)*, or:
 
 1. Install [Werkzeug](https://pypi.org/project/Werkzeug/#files) by either using `pip` or placing the folder `Werkzeug-(version)/src/werkzeug` from downloaded archive to cloned repo.
 
@@ -68,14 +55,13 @@ Template choices:
 ### Notes
 
 - To use in QPython 3L on Android:
-  - Put repo into folder `/sdcard/qpython/projects3`, ensure folder is not nested.
-  - Follow trial steps, prepare all required files.
+  - Put a unix release into folder `/sdcard/qpython/projects3`, ensure folder is not nested.
   - Rename `run.py` to `main.py`.
-  - In QPython 3L app, go to Programs, in Projects tab, select repo name then run.
+  - In QPython 3L app, go to Programs, in Projects tab, select phfs-unix then run.
 
 ### Files
 
-- `run.py`: Run a simple server. Has no debug feature, but works on [pypy](https://www.pypy.org/) on aarch64 architecture.
+- `run.py`: Run a server. Has no debug feature, but works on [pypy](https://www.pypy.org/) on aarch64 architecture.
 - `hfs.ini`: Some configs, like port, are here. Currently you can set a base path as the root dir of served pages, also can set upload-allowed paths.
 - `hash.py`: Hash a password by executing this directly.
 
