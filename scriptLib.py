@@ -1,5 +1,5 @@
 
-import datetime, time, re, os
+import datetime, time, re, os, math
 from classesLib import MacroResult, UniParam, MacroToCallable
 from helpersLib import concat_dict, wildcard2re, if_upload_allowed_in
 from cfgLib import Config
@@ -31,6 +31,7 @@ class Commands():
             'for each': self.macro_for_each,
             'while': self.macro_while,
             'after the list': self.after_the_list,
+            'dequote': self.dequote,
             'call': self.macro_call,
             'break': self.macro_break,
             'replace': self.replace,
@@ -38,6 +39,8 @@ class Commands():
             'section': self.section,
             'comment': self.comment,
             'breadcrumbs': self.breadcrumbs,
+            'header': self.header,
+            'substring': self.substring,
             '=': self.equal,
             '!=': self.not_equal,
             '<>': self.not_equal,
@@ -59,6 +62,19 @@ class Commands():
             'urlvar': self.urlvar,
             'postvar': self.postvar,
             'cut': self.cut,
+            'calc': self.calc,
+            'round': lambda p: MacroResult(str(round(float(p[1]), int(p[2])))),
+            'add': lambda p: MacroResult(str(float(p[1]) + float(p[2]))),
+            'sub': lambda p: MacroResult(str(float(p[1]) - float(p[2]))),
+            'mul': lambda p: MacroResult(str(float(p[1]) * float(p[2]))),
+            'div': lambda p: MacroResult(str(float(p[1]) / float(p[2]))),
+            'mod': lambda p: MacroResult(str(int(p[1]) % int(p[2]))),
+            'min': lambda p: MacroResult(str(min([float(x) for x in p.params[1:]]))),
+            'max': lambda p: MacroResult(str(max([float(x) for x in p.params[1:]]))),
+            'repeat': lambda p: MacroResult(p[2] * int(p[1])),
+            'lower': lambda p: MacroResult(p[1].lower()),
+            'upper': lambda p: MacroResult(p[1].upper()),
+            'trim': lambda p: MacroResult(p[1].strip()),
             'cookie': self.cookie,
             '_unsupported': lambda param: MacroResult(','.join(param.params))
         }
@@ -74,14 +90,21 @@ class Commands():
     def sym_style(self, param: UniParam):
         return param.interpreter.get_section('style', param, True, True)
     def sym_user(self, param: UniParam):
-        return MacroResult(param.statistics.accounts.get(param.request.host, ('', ''))[0])
+        return MacroResult(param.statistics.accounts.get(param.request.cookies.get('HFS_SID_', ''), ('', param.request.host))[0])
     def macro_call(self, param: UniParam):
         p = param.params
         if self._have_variable(p[1], param):
             return MacroResult(self._get_variable(p[1], param))
         elif p[1] in param.interpreter.handler:
-            param.params = param.params[1:]
+            param.params = param[1:]
             return MacroResult(param.interpreter.handler(param))
+    def _get_optional_params(self, param: UniParam, *params):
+        optional_params = {}
+        for i in params:
+            for j in param.params:
+                if j.startswith(i + '='):
+                    optional_params[i] = j[len(i) + 1:]
+        return optional_params
     def _set_variable(self, key: str, value: str, param: UniParam) -> str:
         if key[0:1] == '#':
             param.statistics.variables[key] = value
@@ -94,9 +117,29 @@ class Commands():
             return param.statistics.variables.get(key, self.FALSE)
     def _have_variable(self, key: str, param: UniParam) -> bool:
         return key in param.request.variables or key in param.statistics.variables
+    def calc(self, param: UniParam):
+        # TODO
+        return MacroResult('')
+    def substring(self, param: UniParam):
+        # Case sensitivity always true
+        string: str = param[3]
+        start: str = param[1]
+        end: str = param[2]
+        optional_params = self._get_optional_params(param, 'include')
+        include = optional_params.get('include', '1')
+        result = string[string.find(start) + len(start):string.find(end)]
+        if include == '1':
+            result = start + result
+        elif include == '2':
+            result = result + end
+        elif include == '1+2':
+            result = start + result + end
+        return MacroResult(result)
+    def dequote(self, param: UniParam):
+        return param.interpreter.unquote(param[1], param, True)
     def after_the_list(self, param: UniParam):
         # Since filelist is done just when first symbol parse, this currently does no work
-        return param.interpreter.unquote(param.params[1], param, True) if param.request.listing_completed else MacroResult('')
+        return param.interpreter.unquote(param[1], param, True) if param.request.listing_completed else MacroResult('')
     def macro_for(self, param: UniParam):
         p = param.params
         var_name = p[1]
@@ -119,16 +162,16 @@ class Commands():
             result.append(param.interpreter.parse_text(macro_body, param))
         return MacroResult(''.join([x.content for x in result]))
     def macro_while(self, param: UniParam):
-        is_variable = not param.interpreter.is_quoted(param.params[1])
+        is_variable = not param.interpreter.is_quoted(param[1])
         result = []
         while True:
             if is_variable:
-                if not self._judge(self._get_variable(param.params[1], param)):
+                if not self._judge(self._get_variable(param[1], param)):
                     break
             else:
-                if not self._judge(param.interpreter.unquote(param.params[1], param, True).content):
+                if not self._judge(param.interpreter.unquote(param[1], param, True).content):
                     break
-            result.append(param.interpreter.unquote(param.params[2], param, True))
+            result.append(param.interpreter.unquote(param[2], param, True))
         return MacroResult(''.join([x.content for x in result]))
     def macro_and(self, param: UniParam):
         p = param.params
@@ -143,46 +186,55 @@ class Commands():
             status = p[i] or p[i + 1]
         return MacroResult(status)
     def macro_xor(self, param: UniParam):
-        return MacroResult(self._bool(self._judge(param.params[1]) == self._judge(param.params[2])))
+        return MacroResult(self._bool(self._judge(param[1]) == self._judge(param[2])))
     def urlvar(self, param: UniParam):
-        return MacroResult(param.request.args.get(param.params[1], self.FALSE))
+        return MacroResult(param.request.args.get(param[1], self.FALSE))
     def postvar(self, param: UniParam):
-        return MacroResult(param.request.form.get(param.params[1], self.FALSE))
+        return MacroResult(param.request.form.get(param[1], self.FALSE))
     def cookie(self, param: UniParam):
-        return MacroResult(param.request.cookies.get(param.params[1], self.FALSE))
+        optional_params = self._get_optional_params(param, 'value', 'expires', 'path')
+        result = ''
+        headers = {}
+        if 'value' not in optional_params:
+            result = param.request.cookies.get(param[1], self.FALSE)
+        else:
+            headers['Set-Cookie'] = '; '.join(('%s=%s' % (param[1], optional_params['value']), 'expires=' + optional_params.get('expires', ''), 'path=' + optional_params.get('path', '/')))
+        return MacroResult(result, headers=headers)
     def macro_set(self, param: UniParam):
-        self._set_variable(param.params[1], param.params[2], param)
+        self._set_variable(param[1], param[2], param)
         return MacroResult('')
     def inc(self, param: UniParam):
         if len(param.params) > 2:
-            self._set_variable(param.params[1], str(int(self._get_variable(param.params[1], param)) + int(param.params[2])), param)
+            self._set_variable(param[1], str(int(self._get_variable(param[1], param)) + int(param[2])), param)
         elif len(param.params) == 2:
-            self._set_variable(param.params[1], str(int(self._get_variable(param.params[1], param)) + 1), param)
+            self._set_variable(param[1], str(int(self._get_variable(param[1], param)) + 1), param)
         return MacroResult('')
     def dec(self, param: UniParam):
         if len(param.params) > 2:
-            self._set_variable(param.params[1], str(int(self._get_variable(param.params[1], param)) - int(param.params[2])), param)
+            self._set_variable(param[1], str(int(self._get_variable(param[1], param)) - int(param[2])), param)
         elif len(param.params) == 2:
-            self._set_variable(param.params[1], str(int(self._get_variable(param.params[1], param)) - 1), param)
+            self._set_variable(param[1], str(int(self._get_variable(param[1], param)) - 1), param)
         return MacroResult('')
     def cut(self, param: UniParam):
-        if len(param.params[1]) == 0:
-            param.params[1] = '0'
-        if len(param.params[2]) == 0:
-            param.params[2] = '0'
-        start = int(param.params[1])
-        end = int(param.params[2])
+        if len(param[1]) == 0:
+            param[1] = '0'
+        if len(param[2]) == 0:
+            param[2] = '0'
+        start = int(param[1])
+        end = int(param[2])
         if start < 0 and end < 0 and start > end:
             start, end = end, start
-        string = param.params[3]
+        string = param[3]
         return MacroResult(string[start:end])
     def filesize(self, param: UniParam):
         size = 0
         if os.path.exists(param.request.path_real):
             os.stat(param.request.path_real).st_size
         return MacroResult(str(size))
+    def header(self, param: UniParam):
+        return MacroResult(param.request.headers.get(param[1], ''))
     def breadcrumbs(self, param: UniParam):
-        t = param.interpreter.unquote(param.params[1], param, False).content
+        t = param.interpreter.unquote(param[1], param, False).content
         r = []
         paths = param.request.path.split('/')[:-1]
         bread_url = ''
@@ -199,25 +251,20 @@ class Commands():
             r.append(c.content)
         return MacroResult(''.join(r))
     def time(self, param: UniParam):
-        time_format = 'yyyy-mm-dd hh:MM:ss'
-        when = time.time()
-        result = ''
-        for i in param.params:
-            if i.startswith('format='):
-                time_format = i[7:]
-            if i.startswith('when='):
-                when = float(i[5:])
+        optional_params = self._get_optional_params(param, 'format', 'when')
+        time_format = optional_params.get('format', 'yyyy-mm-dd hh:MM:ss')
+        when = float(optional_params.get('when', time.time()))
         f = datetime.datetime.fromtimestamp(when)
         result = time_format.replace('c', str(f)).replace('yyyy', '%04d' % f.year).replace('mm', '%02d' % f.month).replace('dd', '%02d' % f.day).replace('hh', '%02d' % f.hour).replace('MM', '%02d' % f.minute).replace('ss', '%02d' % f.second)
         return MacroResult(result)
     def macro_if(self, param: UniParam):
         param.params.append('')
-        return param.interpreter.unquote(param.params[2] if self._judge(param.params[1]) else param.params[3], param)
+        return param.interpreter.unquote(param[2] if self._judge(param[1]) else param[3], param)
     def macro_if_not(self, param: UniParam):
         param.params.append('')
-        return param.interpreter.unquote(param.params[3] if self._judge(param.params[1]) else param.params[2], param)
+        return param.interpreter.unquote(param[3] if self._judge(param[1]) else param[2], param)
     def macro_not(self, param: UniParam):
-        return MacroResult(self._bool(not self._judge(param.params[1])))
+        return MacroResult(self._bool(not self._judge(param[1])))
     def macro_break(self, param: UniParam):
         return MacroResult('', do_break=True)
     def comment(self, param: UniParam):
@@ -229,8 +276,8 @@ class Commands():
             string = string.replace(p[i], p[i + 1])
         return MacroResult(string)
     def section(self, param: UniParam):
-        page = param.interpreter.get_section(param.params[1], param, True, True)
-        return MacroResult(page.content, headers=page.headers, cookies=page.cookies)
+        page = param.interpreter.get_section(param[1], param, True, True)
+        return MacroResult(page.content, headers=page.headers)
     def translation(self, param: UniParam):
         t = param.interpreter
         p = param.params
@@ -280,38 +327,46 @@ class Commands():
     def disconnect(self, param: UniParam):
         return MacroResult('', disconnect=True)
     def add_header(self, param: UniParam):
-        header = param.params[1].split(':')
+        header = param[1].split(':')
         header_dict = { header[0]: header[1].strip() }
         return MacroResult('', headers=header_dict)
     def length(self, param: UniParam):
-        return MacroResult(str(len(param.params[1])))
+        return MacroResult(str(len(param[1])))
     def get(self, param: UniParam):
         # TODO
-        result = False
-        if param.params[1] in ('can access'):
-            result = True
-        elif param.params[1] in ('can upload'):
-            if if_upload_allowed_in(param.request.path_real, Config):
-                result = True
-        return MacroResult(self._bool(result))
+        key = param[1]
+        result = self.FALSE
+        if key in ('can access', 'can recur', 'can archive', 'stop spiders'):
+            result = self.TRUE
+        elif key == 'can upload':
+            result = self._bool(if_upload_allowed_in(param.request.path_real, Config))
+        elif key == 'accounts':
+            result = Config.accounts.replace('|', ';')
+        elif key == 'protocolon':
+            result = 'https://' if param.request.is_secure else 'http://'
+        elif key == 'speed limit':
+            result = '0'
+        elif key == 'agent':
+            result = str(param.request.user_agent.browser)  # Maybe None, also differ from oHFS
+        return MacroResult(result)
     def match(self, param: UniParam):
-        regex = wildcard2re(param.params[1])
-        result = re.match(regex, param.params[2], re.I | re.M)
+        regex = wildcard2re(param[1])
+        result = re.match(regex, param[2], re.I | re.M)
         return MacroResult(self._bool(result))
     def regexp(self, param: UniParam):
-        regex = param.params[1]
-        result = re.match(regex, param.params[2], re.I | re.M)
+        regex = param[1]
+        result = re.match(regex, param[2], re.I | re.M)
         return MacroResult(self._bool(result))
     def macro_switch(self, param: UniParam):
-        key = param.params[1]
-        splitter = param.params[2]
+        key = param[1]
+        splitter = param[2]
         conditions = {}
         _current = ''
-        for i, j in enumerate(param.params[3:-1]):
+        for i, j in enumerate(param[3:-1]):
             if i % 2 == 0:
                 _current = j
             else:
                 for k in _current.split(splitter):
                     conditions[k] = j
-        default = param.params[-1]
+        default = param[-1]
         return MacroResult(conditions.get(key, default))

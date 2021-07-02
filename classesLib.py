@@ -40,11 +40,10 @@ class Page():
     content: str
     status: int
     headers: Union[dict, DictAsObject] = DictAsObject()
-    def __init__(self, content: str, status: int, headers=DictAsObject(), cookies=[]):
+    def __init__(self, content: str, status: int, headers=DictAsObject()):
         self.content = content
         self.status = status
         self.headers = headers
-        self.cookies = cookies
 
 class TplSection():
     """ A template section.  
@@ -78,20 +77,23 @@ class UniParam():
         self.params = params
         for i in kwargs:
             setattr(self, i, kwargs[i])
+    def __getitem__(self, key):
+        return self.params[key]
+    def __setitem__(self, key, value):
+        self.params[key] = value
+        return
 
 class MacroResult():
     """ Macro result after executing.  
         `content`: Text representation of result.  
         `do_break`: Break macro execution?  
         `disconnect`: Disconnect this request?  
-        `headers`: Headers to add, as a `dict`.  
-        `cookies`: Cookies to add, as a `list`.
+        `headers`: Headers to add, as a `dict`.
     """
     content: str
     do_break: bool = False
     disconnect: bool = False
     headers: dict = {}
-    cookies: list = []
     def __init__(self, content: str, **kwargs):
         self.content = content
         for i in kwargs:

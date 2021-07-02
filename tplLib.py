@@ -142,7 +142,7 @@ class Interpreter():
         status = 200
         if 'Location' in section.headers:
             status = 302
-        return Page(section.content, status, section.headers, section.cookies)
+        return Page(section.content, status, section.headers)
     def get_page(self, page_name: str, param: UniParam) -> Page:
         uni_param = param
         if page_name == '':
@@ -186,10 +186,9 @@ class Interpreter():
             base_page = self.get_section('error-page', UniParam([], symbols={}, request=param.request, interpreter=self, statistics=param.statistics))
             content = self.get_section(error_type, UniParam([], symbols={}, request=param.request, interpreter=self, statistics=param.statistics))
             headers = concat_dict(base_page.headers, content.headers)
-            cookies = concat_list(base_page.cookies, content.cookies)
             if 'Location' in headers:
                 error_status = 302
-            return Page(replace_str(base_page.content, '%content%', content.content), error_status, headers, cookies)
+            return Page(replace_str(base_page.content, '%content%', content.content), error_status, headers)
     def parse_symbols(self, text: str, param: UniParam, *symbols):
         for i in symbols:
             for j in i:
@@ -210,7 +209,6 @@ class Interpreter():
         broken = False
         disconnect = False
         headers = {}
-        cookies = []
         while position < length:
             last_macro_at = position
             char0 = text[position]
@@ -241,11 +239,9 @@ class Interpreter():
                                 broken = True
                             if result.disconnect:
                                 disconnect = True
-                                return MacroResult('', do_break=True, disconnect=True, headers=headers, cookies=cookies)
+                                return MacroResult('', do_break=True, disconnect=True, headers=headers)
                             for i in result.headers:
                                 headers[i] = result.headers[i]
-                            for i in result.cookies:
-                                cookies.append(i)
                         macro_str = '{.' + '|'.join(full_macro) + '.}'
                         text = replace_str(text, macro_str, result.content)
                         text = self.parse_symbols(text, param, param.symbols, self.symbols)
@@ -272,7 +268,7 @@ class Interpreter():
         if macro_level != 0 or quote_level != 0:
             print(macro_level, quote_level)
             raise MacroNotClosedProperly('Macro not closed properly')
-        return MacroResult(text, do_break=broken, disconnect=disconnect, headers=headers, cookies=cookies)
+        return MacroResult(text, do_break=broken, disconnect=disconnect, headers=headers)
     def unquote(self, text: str, param: UniParam, do_parse=True) -> MacroResult:
         if text[0:2] == '{:' and text[-2:] == ':}':
             text = text[2:-2]

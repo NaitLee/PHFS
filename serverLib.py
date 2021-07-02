@@ -48,6 +48,11 @@ class PHFSServer():
         return Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime('*.html'))
     def get_current_account(self, request: PHFSRequest) -> tuple:
         return self.statistics.accounts.get(request.host, ('', ''))
+    def return_response(self, request, response, environ, start_response):
+        if 'HFS_SID_' not in request.cookies:
+            sid = hashlib.sha256(bytes([random.randint(0, 255) for _ in range(32)])).hexdigest()
+            response.headers['Set-Cookie'] = 'HFS_SID_=%s; HttpOnly' % sid
+        return response(environ, start_response)
     def wsgi(self, environ, start_response):
         request_initial = Request(environ)
         response = Response('bad request', 400)
@@ -61,7 +66,7 @@ class PHFSServer():
         # levels_real = resource.split('/')
         if not Account.can_access(self.get_current_account(request)[0], resource):
             response = self.unauth_response(request)
-            return response(environ, start_response)
+            return self.return_response(request, response, environ, start_response)
         if request.args.get('tpl', '') == 'list':
             uni_param.interpreter = self.itp_filelist
         if request.method == 'POST':
@@ -83,7 +88,7 @@ class PHFSServer():
                             upload_result[filename] = (False, str(e))
                     page = self.interpreter.get_page('upload-results', UniParam([upload_result], interpreter=self.interpreter, request=request, statistics=self.statistics))
                     response = Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime('*.html'))
-                return response(environ, start_response)
+                return self.return_response(request, response, environ, start_response)
         if 'mode' in request.args:
             # urlvar mode
             mode = request.args['mode']
@@ -101,18 +106,20 @@ class PHFSServer():
                     response = Response('bad password', 200)
                 else:
                     sid = hashlib.sha256(bytes([random.randint(0, 255) for _ in range(32)])).hexdigest()
-                    self.statistics.accounts[request.host] = (account_name, sid)
+                    self.statistics.accounts[sid] = (account_name, request.host)
                     response = Response('ok', 200, {'Set-Cookie': 'HFS_SID_=%s; HttpOnly' % sid})
             elif mode == 'logout':
-                del self.statistics.accounts[request.host]
+                sid = request.cookies.get('HFS_SID_', '')
+                if sid in self.statistics.accounts:
+                    del self.statistics.accounts[sid]
                 response = Response('ok', 200, {'Set-Cookie': 'HFS_SID_=; HttpOnly; Max-Age=0'})
-            return response(environ, start_response)
+            return self.return_response(request, response, environ, start_response)
         elif 'search' in request.args:
             # Search, with re.findall
             directory = request.path_real_dir
             if not os.path.isdir(directory):
                 response = self.not_found_response(request)
-                return response(environ, start_response)
+                return self.return_response(request, response, environ, start_response)
             pattern = re.compile(wildcard2re(request.args['search']), re.I)
             recursive = 'recursive' in request.args or bool(Config.recur_search)
             items_folder = []
@@ -140,13 +147,13 @@ class PHFSServer():
             uni_param.filelist = filelist
             page = uni_param.interpreter.get_page('', uni_param)
             response = Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime('*.html'))
-            return response(environ, start_response)
+            return self.return_response(request, response, environ, start_response)
         elif 'filter' in request.args:
             # Filter, with re.fullmatch
             directory = request.path_real_dir
             if not os.path.isdir(directory):
                 response = self.not_found_response(request)
-                return response(environ, start_response)
+                return self.return_response(request, response, environ, start_response)
             pattern = re.compile(wildcard2re(request.args['filter']), re.I)
             recursive = 'recursive' in request.args or bool(Config.recur_search)
             items_folder = []
@@ -174,7 +181,7 @@ class PHFSServer():
             uni_param.filelist = filelist
             page = uni_param.interpreter.get_page('', uni_param)
             response = Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime('*.html'))
-            return response(environ, start_response)
+            return self.return_response(request, response, environ, start_response)
         elif levels_virtual[-1][0:1] == '~':
             # Command
             command = levels_virtual[-1][1:]
@@ -213,7 +220,7 @@ class PHFSServer():
                 uni_param.filelist = filelist
                 page = uni_param.interpreter.get_page('', uni_param)
                 response = Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime('*.txt'))
-            return response(environ, start_response)
+            return self.return_response(request, response, environ, start_response)
         elif resource != None:
             # Filelist or send file or 404
             if os.path.exists(resource):
@@ -231,9 +238,9 @@ class PHFSServer():
                     response = send_file(resource, environ)
             else:
                 response = self.not_found_response(request)
-            return response(environ, start_response)
+            return self.return_response(request, response, environ, start_response)
         else:
             response = self.not_found_response(request)
-        return response(environ, start_response)
+        return self.return_response(request, response, environ, start_response)
     def __call__(self, environ, start_response):
         return self.wsgi(environ, start_response)
