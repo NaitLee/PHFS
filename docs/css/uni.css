@@ -14,11 +14,17 @@ a:link, a:hover, a:active, a:visited {
     background-image: linear-gradient(180deg, #dae0d2 0%, #dae0d2 80%, white 100%);
     height: 8em;
 }
+.part0 img {
+    position: absolute;
+    left: 0;
+    width: 8em;
+    height: 8em;
+}
 .part0 h1 {
     margin: 0;
     position: relative;
-    top: 8px;
-    left: 1em;
+    top: 0.5em;
+    left: 3em;
     font-variant: small-caps;
     letter-spacing: 0.1em;
     font-weight: normal;
@@ -26,8 +32,8 @@ a:link, a:hover, a:active, a:visited {
 }
 .part0 p {
     position: relative;
-    left: 6em;
-    top: -1em;
+    left: 11em;
+    top: 0;
     font-style: italic;
     color: gray;
 }
@@ -52,6 +58,9 @@ a:link, a:hover, a:active, a:visited {
     top: -120px;
     height: 80px;
     overflow-y: visible;
+}
+.part1 .chunk.description p {
+    margin: 8px 0;
 }
 .part1 .chunk.center {
     margin: 1em auto 2em 4em;

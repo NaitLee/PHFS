@@ -1,6 +1,9 @@
 [English](./README.md) | [简体中文](./README-zh-CN.md)
 
 # PHFS
+
+![PHFS ~ Python HTTP File Server](https://repository-images.githubusercontent.com/367633470/9c58d900-d6c2-11eb-8afc-b1d42e698c22)
+
 💫 *This is a Python3 implementation of rejetto's [HTTP File Server](https://github.com/rejetto/hfs2)~*
 
 ----
