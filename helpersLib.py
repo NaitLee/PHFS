@@ -52,6 +52,24 @@ def replace_str(str0: str, str1: str, str2: str):
         return ''.join(results)
     return str0
 
+def float_to_str(number: float, do_round=False) -> str:
+    """ Converts float to int if possible (that is, when it % 1 == 0)
+    """
+    if number % 1 == 0:
+        return str(round(number) if do_round else int(number))
+    else:
+        return str(number)
+
+num_chars = '0123456789.'
+def is_number(string: str) -> bool:
+    """ Judge if content of a string represents a "number" i.e. int or float
+    """
+    global num_chars
+    for i in string:
+        if i not in num_chars:
+            return False
+    return True
+
 def parse_ini(c: str):
     """ Parse an ini content, returns a dict """
     d = {}

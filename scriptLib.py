@@ -1,13 +1,13 @@
 
 import datetime, time, re, os, math
 from classesLib import MacroResult, UniParam, MacroToCallable
-from helpersLib import concat_dict, wildcard2re, if_upload_allowed_in
+from helpersLib import concat_dict, wildcard2re, if_upload_allowed_in, float_to_str, is_number
 from cfgLib import Config
 
 class Commands():
     TRUE = '1'
     FALSE = ''
-    FALSE_VALUES = ('', '0')
+    FALSE_VALUES = ('', '0', '0.0')
     class VarContainer():
         def __init__(self):
             self.vars = {}
@@ -63,14 +63,14 @@ class Commands():
             'postvar': self.postvar,
             'cut': self.cut,
             'calc': self.calc,
-            'round': lambda p: MacroResult(str(round(float(p[1]), int(p[2])))),
-            'add': lambda p: MacroResult(str(float(p[1]) + float(p[2]))),
-            'sub': lambda p: MacroResult(str(float(p[1]) - float(p[2]))),
-            'mul': lambda p: MacroResult(str(float(p[1]) * float(p[2]))),
-            'div': lambda p: MacroResult(str(float(p[1]) / float(p[2]))),
-            'mod': lambda p: MacroResult(str(int(p[1]) % int(p[2]))),
-            'min': lambda p: MacroResult(str(min([float(x) for x in p.params[1:]]))),
-            'max': lambda p: MacroResult(str(max([float(x) for x in p.params[1:]]))),
+            'round': lambda p: MacroResult(float_to_str(round(float(p[1]), int(p[2])))),
+            'add': lambda p: MacroResult(float_to_str(float(p[1]) + float(p[2]))),
+            'sub': lambda p: MacroResult(float_to_str(float(p[1]) - float(p[2]))),
+            'mul': lambda p: MacroResult(float_to_str(float(p[1]) * float(p[2]))),
+            'div': lambda p: MacroResult(float_to_str(float(p[1]) / float(p[2]))),
+            'mod': lambda p: MacroResult(float_to_str(int(p[1]) % int(p[2]))),
+            'min': lambda p: MacroResult(float_to_str(min([float(x) for x in p.params[1:]]))),
+            'max': lambda p: MacroResult(float_to_str(max([float(x) for x in p.params[1:]]))),
             'repeat': lambda p: MacroResult(p[2] * int(p[1])),
             'lower': lambda p: MacroResult(p[1].lower()),
             'upper': lambda p: MacroResult(p[1].upper()),
@@ -205,15 +205,15 @@ class Commands():
         return MacroResult('')
     def inc(self, param: UniParam):
         if len(param.params) > 2:
-            self._set_variable(param[1], str(int(self._get_variable(param[1], param)) + int(param[2])), param)
+            self._set_variable(param[1], float_to_str(float(self._get_variable(param[1], param)) + float(param[2])), param)
         elif len(param.params) == 2:
-            self._set_variable(param[1], str(int(self._get_variable(param[1], param)) + 1), param)
+            self._set_variable(param[1], float_to_str(float(self._get_variable(param[1], param)) + 1), param)
         return MacroResult('')
     def dec(self, param: UniParam):
         if len(param.params) > 2:
-            self._set_variable(param[1], str(int(self._get_variable(param[1], param)) - int(param[2])), param)
+            self._set_variable(param[1], float_to_str(float(self._get_variable(param[1], param)) - float(param[2])), param)
         elif len(param.params) == 2:
-            self._set_variable(param[1], str(int(self._get_variable(param[1], param)) - 1), param)
+            self._set_variable(param[1], float_to_str(float(self._get_variable(param[1], param)) - 1), param)
         return MacroResult('')
     def cut(self, param: UniParam):
         if len(param[1]) == 0:
@@ -286,14 +286,24 @@ class Commands():
         p = param.params
         status = True
         for i in range(1, len(p) - 1):
-            if p[i] != p[i + 1]:
+            first: str = p[i]
+            second: str = p[i + 1]
+            if is_number(first) and is_number(second):
+                first = float_to_str(float(first))
+                second = float_to_str(float(second))
+            if first != second:
                 status = False
         return MacroResult(self._bool(status))
     def not_equal(self, param: UniParam):
         p = param.params
         status = True
         for i in range(1, len(p) - 1):
-            if p[i] == p[i + 1]:
+            first: str = p[i]
+            second: str = p[i + 1]
+            if is_number(first) and is_number(second):
+                first = float_to_str(float(first))
+                second = float_to_str(float(second))
+            if first == second:
                 status = False
         return MacroResult(self._bool(status))
     def greater_than(self, param: UniParam):
