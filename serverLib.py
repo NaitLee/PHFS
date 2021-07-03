@@ -48,7 +48,9 @@ class PHFSServer():
         return Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime('*.html'))
     def get_current_account(self, request: PHFSRequest) -> tuple:
         return self.statistics.accounts.get(request.host, ('', ''))
-    def return_response(self, request, response, environ, start_response):
+    def return_response(self, request: PHFSRequest, response: Response, environ, start_response):
+        if 'Location' in response.headers:
+            response.status_code = 302
         if 'HFS_SID_' not in request.cookies:
             sid = hashlib.sha256(bytes([random.randint(0, 255) for _ in range(32)])).hexdigest()
             response.headers['Set-Cookie'] = 'HFS_SID_=%s; HttpOnly' % sid

@@ -140,8 +140,6 @@ class Interpreter():
         if section == None:
             return self.get_page('error-page', UniParam(['not found', 404], interpreter=self, request=param.request))
         status = 200
-        if 'Location' in section.headers:
-            status = 302
         return Page(section.content, status, section.headers)
     def get_page(self, page_name: str, param: UniParam) -> Page:
         uni_param = param
@@ -186,8 +184,6 @@ class Interpreter():
             base_page = self.get_section('error-page', UniParam([], symbols={}, request=param.request, interpreter=self, statistics=param.statistics))
             content = self.get_section(error_type, UniParam([], symbols={}, request=param.request, interpreter=self, statistics=param.statistics))
             headers = concat_dict(base_page.headers, content.headers)
-            if 'Location' in headers:
-                error_status = 302
             return Page(replace_str(base_page.content, '%content%', content.content), error_status, headers)
     def parse_symbols(self, text: str, param: UniParam, *symbols):
         for i in symbols:
