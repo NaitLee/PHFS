@@ -44,7 +44,7 @@ class Interpreter():
             'sequencial': lambda p: MacroResult('0'),
             'number-addresses-ever': lambda p: MacroResult('0'),
             'port': lambda p: MacroResult(Config.port),
-            'folder': lambda p: MacroResult(join_path(p.request.path_virtual_dir, '/') if p.request != None else ''),
+            'folder': lambda p: MacroResult((p.request.path_virtual_dir + '/') if p.request != None else ''),
             'encoded-folder': lambda p: MacroResult(purify(join_path(p.request.path_virtual_dir, '/')) if p.request != None else '')
         }
         self.sections = object_from_dict({
@@ -105,7 +105,8 @@ class Interpreter():
             pair = i.split('=', 1)
             if len(pair) < 2:
                 continue
-            self.translations[pair[0]] = pair[1]
+            if pair[0] not in self.translations:
+                self.translations[pair[0]] = pair[1]
         alias_from_txt = read_ini('alias.txt')
         for i in alias_from_txt:
             self.handler[i] = MacroToCallable(alias_from_txt[i], UniParam([], interpreter=self), True)

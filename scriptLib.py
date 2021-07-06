@@ -61,6 +61,7 @@ class Commands():
             'filesize': self.filesize,
             'urlvar': self.urlvar,
             'postvar': self.postvar,
+            'no pipe': self.no_pipe,
             'cut': self.cut,
             'calc': self.calc,
             'round': lambda p: MacroResult(float_to_str(round(float(p[1]), int(p[2])))),
@@ -120,20 +121,26 @@ class Commands():
     def calc(self, param: UniParam):
         # TODO
         return MacroResult('')
+    def no_pipe(self, param: UniParam):
+        return MacroResult('{:|:}'.join(param[1:]))
     def substring(self, param: UniParam):
         # Case sensitivity always true
         string: str = param[3]
-        start: str = param[1]
-        end: str = param[2]
+        start = string.find(param[1]) + len(param[1])
+        end = string.find(param[2])
+        if start in (0, len(string) - 1):
+            start = 0
+        if end in (0, -1):
+            end = len(string)
         optional_params = self._get_optional_params(param, 'include')
         include = optional_params.get('include', '1')
-        result = string[string.find(start) + len(start):string.find(end)]
+        result = string[start:end]
         if include == '1':
-            result = start + result
+            result = param[1] + result
         elif include == '2':
-            result = result + end
+            result = result + param[2]
         elif include == '1+2':
-            result = start + result + end
+            result = param[1] + result + param[2]
         return MacroResult(result)
     def dequote(self, param: UniParam):
         return param.interpreter.unquote(param[1], param, True)
@@ -273,7 +280,7 @@ class Commands():
         p = param.params
         string = p[-1]
         for i in range(1, len(p) - 1, 2):
-            string = string.replace(p[i], p[i + 1])
+            string = string.replace(p[i], param.interpreter.unquote(p[i + 1], param, True).content)
         return MacroResult(string)
     def section(self, param: UniParam):
         page = param.interpreter.get_section(param[1], param, True, True)
@@ -379,4 +386,4 @@ class Commands():
                 for k in _current.split(splitter):
                     conditions[k] = j
         default = param[-1]
-        return MacroResult(conditions.get(key, default))
+        return param.interpreter.unquote(conditions.get(key, default), param, True)
