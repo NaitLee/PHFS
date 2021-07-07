@@ -52,6 +52,12 @@ def replace_str(str0: str, str1: str, str2: str):
         return ''.join(results)
     return str0
 
+def replace_str_at_position(str0: str, pos: int, str1: str, str2: str) -> str:
+    str_part_0 = str0[0:pos]
+    str_part_1 = str2
+    str_part_2 = str0[pos + len(str1):]
+    return str_part_0 + str_part_1 + str_part_2
+
 def float_to_str(number: float, do_round=False) -> str:
     """ Converts float to int if possible (that is, when it % 1 == 0)
     """

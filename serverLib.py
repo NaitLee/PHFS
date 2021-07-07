@@ -66,6 +66,9 @@ class PHFSServer():
         uni_param = UniParam([], interpreter=self.interpreter, request=request, filelist=FileList([]), statistics=self.statistics)
         levels_virtual = path.split('/')
         # levels_real = resource.split('/')
+        if resource[-1:] != '/' and os.path.isdir(resource):
+            response = Response('', 302, {'Location': path + '/'})
+            return self.return_response(request, response, environ, start_response)
         if not Account.can_access(self.get_current_account(request)[0], resource):
             response = self.unauth_response(request)
             return self.return_response(request, response, environ, start_response)

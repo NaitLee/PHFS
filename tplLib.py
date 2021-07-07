@@ -3,7 +3,7 @@ import datetime, os, random, shutil, time
 
 from classesLib import TplSection, UniParam, MacroResult, MacroToCallable, Page, ItemEntry, FileList, object_from_dict
 from scriptLib import Commands
-from helpersLib import replace_str, read_ini, concat_dict, concat_list, purify, smartsize, sort, join_path, strip_starting_spaces
+from helpersLib import replace_str, read_ini, concat_dict, concat_list, purify, smartsize, sort, join_path, strip_starting_spaces, replace_str_at_position
 from cfgLib import Config
 
 class MacroNotClosedProperly(Exception):
@@ -262,14 +262,30 @@ class Interpreter():
             elif mark0 == ':}':
                 quote_level -= 1
             position += 1
-        if macro_level != 0 or quote_level != 0:
-            print(macro_level, quote_level)
-            raise MacroNotClosedProperly('Macro not closed properly')
+        if macro_level != 0:
+            raise MacroNotClosedProperly('Macro not closed properly at level %i' % macro_level)
+        text = text.replace('{:', '').replace(':}', '')
         return MacroResult(text, do_break=broken, disconnect=disconnect, headers=headers)
     def unquote(self, text: str, param: UniParam, do_parse=True) -> MacroResult:
-        if text[0:2] == '{:' and text[-2:] == ':}':
-            text = text[2:-2]
-        # text = strip_starting_spaces(text)    # No need
+        quote_level = 0
+        position = 0
+        length = len(text)
+        while position < length:
+            mark0 = text[position:position + 2]
+            if mark0 == '{:':
+                quote_level += 1
+                if quote_level == 1:
+                    text = replace_str_at_position(text, position, '{:', '')
+                    length -= 2
+                    continue
+            elif mark0 == ':}':
+                quote_level -= 1
+                if quote_level == 0:
+                    text = replace_str_at_position(text, position, ':}', '')
+                    length -= 2
+                    continue
+            position += 1
+        # text = text.replace('{:', '').replace(':}', '')
         # Deep copy param, prevent modifying original one
         uni_param = UniParam(param.params, interpreter=param.interpreter, request=param.request, filelist=param.filelist, statistics=param.statistics)
         return self.parse_text(text, uni_param) if do_parse else MacroResult(text)
