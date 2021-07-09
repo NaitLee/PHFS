@@ -29,6 +29,12 @@
 - ARM Boards like Raspberry Pi, with [PyPy](https://www.pypy.org/)
 - ...
 
+## Tips
+
+The release bundle for Windows platform have additional convenient features. Read them at [here](https://github.com/NaitLee/phfs-bundler-win).
+
+Drag-drop item(s) to batch file (`start.bat`) or command-line (`run.py`) for quick file-sharing.
+
 ## Developer Notes
 
 👀 This project is not yet ready for production use. But, please, have a try!

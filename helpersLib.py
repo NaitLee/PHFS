@@ -1,6 +1,12 @@
 #!/usr/bin/python3
 
-import urllib, os
+import urllib, os, shutil
+
+def smartcopy(src, dst):
+    if os.path.isfile(src):
+        shutil.copy(src, dst + '/' + os.path.basename(src) if os.path.exists(dst) else dst)
+    else:
+        shutil.copytree(src, dst + '/' + os.path.basename(src) if os.path.exists(dst) else dst)
 
 def sort(l, m, f):
     """ Bubble sort.  
