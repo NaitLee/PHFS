@@ -26,6 +26,12 @@
 - ARM 开发板，如树莓派，使用 [PyPy](https://www.pypy.org/)
 - ……
 
+## 小提示
+
+Windows 平台的发行包包含便捷功能。可于[此处](https://github.com/NaitLee/phfs-bundler-win)了解。
+
+拖放文件（夹）到批处理文件（`start.bat`）或命令行（`run.py`）以快速分享。
+
 ## 开发者信息
 
 👀 此作品还不能正式投入使用。但是，试一试吧！
