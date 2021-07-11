@@ -21,7 +21,7 @@
 🍉 支持的平台:
 
 - Windows 7 及以上
-- GNU/Linux, *nix, *BSD
+- GNU/Linux, \*nix, \*BSD
 - Android，使用 [QPython 3L](https://www.qpython.org/)
 - ARM 开发板，如树莓派，使用 [PyPy](https://www.pypy.org/)
 - ……
@@ -60,13 +60,50 @@ Windows 平台的发行包包含便捷功能。可于[此处](https://github.com
 
 ### 注记
 
-- 有缘相见 ♪(^∇^*)~
+- 有缘相见 ♪(^∇^\*)~
   - QQ 交流群号：676460276
 
 - 要在 Android QPython 3L 上使用：
   - 将一份 unix release 放置于 `/sdcard/qpython/projects3`，确保文件夹层级正确。
   - 将 `run.py` 重命名为 `main.py`。
   - 在 QPython 3L app 内，进入 Programs，在 Projects 标签，选择 phfs-unix 并 Run。
+
+### 配置文件
+
+```ini
+; 要绑定的 host 地址。设为 0.0.0.0 (ipv4) 或 ::1 (ipv6) 以绑定所有
+host=0.0.0.0
+; 端口
+port=8090
+; 服务器根目录。不要包含最后的斜杠 /
+; 在 Windows 下也使用 / 而非 \
+; 如. /mnt , E:
+base_path=
+; 允许上传的实目录（本地目录）。以管道分隔 |
+upload_allowed_paths=/uploads
+; 在此处添加账号。以管道分隔 |
+accounts=root
+; 每个账号密码的基哈希。使用 `hash.py` 获取。以管道分隔 |
+passwords=8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92
+; 每个账号允许访问的实目录。以反斜杠分隔目录 \ ，以管道分隔账号 |
+account_permitted=/root\/boot
+; 总是递归搜索目录吗？1 为真，留空为假
+recur_search=1
+; 总是递归打包吗？
+recur_archive=1
+; 是否使用 IPv6?
+ipv6=
+; 区域代码。用于日志等的本地化。留空为自动检测。
+locale=
+; 使用哪种字符编码排序文件列表？
+; 留空为自动检测。不过，当文件名包含不属于此编码的字符时，会出现错误。
+; 提示：使用 gb18030 以使用拼音排序。
+sort_encoding=utf-8
+; 隐藏以点开头的文件吗？
+; 仍然可以在地址栏输入正确的文件名以访问它们。
+hide_dots=
+
+```
 
 ### 文件
 
@@ -85,3 +122,5 @@ Windows 平台的发行包包含便捷功能。可于[此处](https://github.com
 - `serverLib.py`: 定义了一个运行如 HFS 的 WSGI 应用。
 - `tplLib.py`: 这是模板解释器。
 - `hashLib.py`: 此文件中的类可获取文件哈希值（基哈希、会话哈希）。
+- `i18n.ini`: 包含本地化数据。
+- `i18nLib.py`: 其中的 `I18n.get_string()` 可获取本地化字符串。

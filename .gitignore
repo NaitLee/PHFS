@@ -6,3 +6,4 @@ hfs*.tpl
 wsgiserver.py
 _test.py
 sha256.js
+*~

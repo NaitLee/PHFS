@@ -24,7 +24,7 @@
 🍉 Supported platforms:
 
 - Windows 7 and upper
-- GNU/Linux, *nix, *BSD
+- GNU/Linux, \*nix, \*BSD
 - Android, with [QPython 3L](https://www.qpython.org/)
 - ARM Boards like Raspberry Pi, with [PyPy](https://www.pypy.org/)
 - ...
@@ -85,3 +85,5 @@ Template choices:
 - `serverLib.py`: Defines a WSGI application, which acts like original HFS.
 - `tplLib.py`: The template is interpreted by this.
 - `hashLib.py`: Classes inside can hash passwords from/to base-hash/token-hash.
+- `i18n.ini`: Contains localization data.
+- `i18nLib.py`: `I18n.get_string()` inside can get localization string.
