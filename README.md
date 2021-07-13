@@ -65,6 +65,7 @@ Template choices:
 
 - To use in QPython 3L on Android:
   - Put a unix release into folder `/sdcard/qpython/projects3`, ensure folder is not nested.
+  - Get `dataclasses.py` from Python 3 builtin libs, put into folder. Or, install `dataclasses` with PIP console.
   - Rename `run.py` to `main.py`.
   - In QPython 3L app, go to Programs, in Projects tab, select phfs-unix then run.
 

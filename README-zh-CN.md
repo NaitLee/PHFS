@@ -65,6 +65,7 @@ Windows 平台的发行包包含便捷功能。可于[此处](https://github.com
 
 - 要在 Android QPython 3L 上使用：
   - 将一份 unix release 放置于 `/sdcard/qpython/projects3`，确保文件夹层级正确。
+  - 从 Python 3 内置库获取 `dataclasses.py`，放入文件夹。或者，从 PIP 控制台安装 `dataclasses`。
   - 将 `run.py` 重命名为 `main.py`。
   - 在 QPython 3L app 内，进入 Programs，在 Projects 标签，选择 phfs-unix 并 Run。
 
