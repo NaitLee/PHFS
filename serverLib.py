@@ -59,7 +59,7 @@ class PHFSServer():
         request_initial = Request(environ)
         response = Response('bad request', 400)
         page = Page('', 400)
-        path = request_initial.path
+        path = request_initial.path.replace('/..', '')
         resource = join_path(Config.base_path, path)
         request = PHFSRequest(environ, path, resource)
         self.request = request

@@ -99,10 +99,7 @@ def read_ini(f: str):
     f.close()
     return parse_ini(c)
 
-units = ['','K','M','G','T']
-for c in range(97, 123):    # aa-zz
-    units.append(chr(c)+chr(c))
-
+units = ['','K','M','G','T'] + [(chr(x) + chr(x)) for x in range(97, 123)]
 def smartsize(b: int):
     """ Get a number with unit, 1024 = 1 K etc. """
     i = 0
@@ -174,7 +171,7 @@ def if_upload_allowed_in(path, cfg):
             break
     return upload_allowed
 
-illegal_chars = [chr(x) for x in range(32)] + ['/', '\\', ':', '?', '*', '"', '<', '>', '|', '{.', '.}', '{:', ':}']
+illegal_chars = [chr(x) for x in range(32)] + ['/', '\\', ':', '?', '*', '"', '<', '>', '|', '{.', '.}', '{:', ':}', '/..']
 def purify_filename(filename) -> str:
     global illegal_chars
     for i in illegal_chars:
