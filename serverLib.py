@@ -1,12 +1,13 @@
 
-import os, io, tarfile, tempfile, mimeLib, time, re, random, hashlib
+import os, io, tarfile, tempfile, mimeLib, time, re, random, hashlib, zipfile
 import hashLib
 from werkzeug.wrappers import Request, Response
 from werkzeug.utils import send_file
 from tplLib import Interpreter
-from classesLib import UniParam, Page, FileList, ItemEntry
+from classesLib import UniParam, Page, FileList, ItemEntry, ZipItemEntry
 from cfgLib import Config, Account
 from helpersLib import get_dirname, if_upload_allowed_in, purify_filename, wildcard2re, join_path
+from i18nLib import I18n
 
 builtin_sections = ('sha256.js')
 
@@ -38,6 +39,7 @@ class PHFSServer():
         itp_filelist = Interpreter('hfs.filelist.tpl')
     else:
         itp_filelist = Interpreter('filelist.tpl')
+    cached_zip_files = {}
     def __init__(self):
         pass
     def not_found_response(self, request: PHFSRequest) -> Response:
@@ -65,7 +67,7 @@ class PHFSServer():
         self.request = request
         uni_param = UniParam([], interpreter=self.interpreter, request=request, filelist=FileList([]), statistics=self.statistics)
         levels_virtual = path.split('/')
-        # levels_real = resource.split('/')
+        levels_real = resource.split('/')
         if resource[-1:] != '/' and os.path.isdir(resource):
             response = Response('', 302, {'Location': path + '/'})
             return self.return_response(request, response, environ, start_response)
@@ -230,6 +232,7 @@ class PHFSServer():
             # Filelist or send file or 404
             if os.path.exists(resource):
                 if os.path.isdir(resource):
+                    # List files
                     if 'no list' not in uni_param.interpreter.sections[''].params:
                         path_real_dir = request.path_real_dir + '/'
                         shown_files = [x for x in os.listdir(path_real_dir) if x[0:1] != '.'] if Config.hide_dots else os.listdir(path_real_dir)
@@ -239,9 +242,34 @@ class PHFSServer():
                         uni_param.filelist = filelist
                     page = uni_param.interpreter.get_page('', uni_param)
                     response = Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime('*.txt' if uni_param.interpreter == self.itp_filelist else '*.html'))
+                elif levels_real[-1].lower().endswith('.zip') and Config.preview_zip:
+                    # Preview zip file if configured
+                    if resource not in self.cached_zip_files:
+                        try:
+                            zip_file = zipfile.ZipFile(resource, 'r')
+                        except zipfile.BadZipFile:
+                            response = Response(I18n.get_string('zip_file_is_broken'), 202)
+                            return self.return_response(request, response, environ, start_response)
+                        self.cached_zip_files[resource] = (zip_file, )
+                    zip_file_data = self.cached_zip_files[resource]
+                    if 'getitem' in request.args:
+                        zip_file = zip_file_data[0]
+                        filename = request.args['getitem']
+                        try:
+                            response = Response(zip_file.read(filename), 200, mimetype=mimeLib.getmime(filename))
+                        except KeyError:
+                            response = self.not_found_response(request)
+                    else:
+                        items = [ZipItemEntry(x, resource, path) for x in zip_file_data[0].filelist if x.filename[-1:] != '/']
+                        filelist = FileList(items)
+                        uni_param.filelist = filelist
+                        page = uni_param.interpreter.get_page('', uni_param)
+                        response = Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime('*.txt' if uni_param.interpreter == self.itp_filelist else '*.html'))
                 else:
+                    # A file
                     response = send_file(resource, environ)
             else:
+                # 404
                 response = self.not_found_response(request)
             return self.return_response(request, response, environ, start_response)
         else:

@@ -113,6 +113,15 @@ class MacroToCallable():
             new_str = new_str.replace('$' + str(i), j)
         return self.interpreter.parse_text(new_str, param)
 
+class FakeStatResult():
+    st_size: int  # size of file, in bytes,
+    st_atime: float  # time of most recent access,
+    st_mtime: float  # time of most recent content modification,
+    def __init__(self, sr: os.stat_result):
+        self.st_size = sr.st_size
+        self.st_atime = sr.st_atime
+        self.st_mtime = sr.st_mtime
+
 class ItemEntry():
     """ A class that acts like `os.DirEntry`, but with more.
     """
@@ -120,7 +129,7 @@ class ItemEntry():
     path: str
     url: str
     _is_dir: bool
-    _stat: os.stat_result
+    _stat: FakeStatResult
     def __init__(self, path_real: str, path_virtual: str, base_virtual_dir='/'):
         levels_real = path_real.split('/')
         self.name = levels_real[-2] if path_real[-1] == '/' else levels_real[-1]
@@ -134,6 +143,22 @@ class ItemEntry():
         return self._is_dir
     def stat(self):
         return self._stat
+
+class ZipItemEntry(ItemEntry):
+    name: str
+    path: str
+    url: str
+    _is_dir: bool
+    _stat: FakeStatResult
+    def __init__(self, zipinfo, zip_file_path_real: str, zip_file_path_virtual: str, base_virtual_dir='/'):
+        levels = zipinfo.filename.split('/')
+        self.name = levels[-2] if zipinfo.filename[-1] == '/' else levels[-1]
+        self.path = zip_file_path_real
+        self.url = zip_file_path_virtual + '?getitem=' + zipinfo.filename
+        self._is_dir = zipinfo.filename[-1:] == '/'
+        zip_file_stats = FakeStatResult(os.stat(zip_file_path_real))
+        zip_file_stats.st_size = zipinfo.file_size
+        self._stat = zip_file_stats
 
 class FileList():
     """ A file list.  
@@ -171,7 +196,7 @@ class FileList():
             # if not (os.path.exists(e.path) and os.access(e.path, os.R_OK)):  # sometimes appears a non-exist or unreadable file
             #     continue
             stats = e.stat()
-            url = purify(e.url + ('' if e.is_file() and e.url[-1] != '/' else '/'))
+            url = e.url + ('' if e.is_file() and e.url[-1] != '/' else '/')
             name = e.name.replace('|', '&#124;')
             last_modified = str(datetime.datetime.fromtimestamp(stats.st_mtime)).split('.')[0]
             last_modified_dt = stats.st_mtime

@@ -88,6 +88,8 @@ accounts=root
 passwords=8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92
 ; 每个账号允许访问的实目录。以反斜杠分隔目录 \ ，以管道分隔账号 |
 account_permitted=/root\/boot
+; 启用预览压缩文件吗？
+preview_zip=
 ; 总是递归搜索目录吗？1 为真，留空为假
 recur_search=1
 ; 总是递归打包吗？
