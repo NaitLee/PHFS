@@ -207,6 +207,7 @@ class Interpreter():
         disconnect = False
         headers = {}
         while position < length:
+            # We parse content char by char and find tokens
             last_macro_at = position
             char0 = text[position]
             mark0 = text[position:position + 2]
@@ -218,6 +219,10 @@ class Interpreter():
                 if macro_level > 100:
                     raise TooManyRecurs('Too many recurs at line %d, column %d' % (newlines, position - last_newline_at))
             elif mark0 == '.}' and quote_level == 0:
+                # Macros are executed inner to outer, so when we find the first CLOSE,
+                # we reverse parse the content and find the first OPEN, 
+                # and collect parameters, then execute & replace the macro
+                # Also note, many things have inverted logic here :)
                 while position >= 0:
                     char1 = text[position]
                     mark1 = text[position:position + 2]
@@ -246,9 +251,9 @@ class Interpreter():
                         full_macro = ['']
                         break
                     elif mark1 == '{:':
-                        quote_level += 1
-                    elif mark1 == ':}':
                         quote_level -= 1
+                    elif mark1 == ':}':
+                        quote_level += 1
                     if char1 == '|' and quote_level == 0:
                         full_macro.append('')
                     else:

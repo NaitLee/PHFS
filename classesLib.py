@@ -4,7 +4,7 @@ from typing import Union
 import datetime
 
 from cfgLib import Config
-from helpersLib import get_dirname, purify, concat_dict, smartsize, sort
+from helpersLib import get_dirname, purify, concat_dict, smartsize, sort, purify_filename
 
 class DictAsObject(dict):
     """ Let you use a dict like an object in JavaScript.  
@@ -100,9 +100,11 @@ class MacroResult():
             setattr(self, i, kwargs[i])
 
 class MacroToCallable():
-    def __init__(self, macro_str: str, param: UniParam, possible_miss_markers=False):
+    """ Make a string representing a macro (usually in special:alias) can be called as those in `scriptLib.py`
+    """
+    def __init__(self, macro_str: str, param: UniParam, possibly_missing_markers=False):
         macro_str = param.interpreter.unquote(macro_str, param, False).content
-        if possible_miss_markers:
+        if possibly_missing_markers:
             if not (macro_str[0:2] == '{.' and macro_str[-2:] == '.}'):
                 macro_str = '{.' + macro_str + '.}'
         self.macro_str = macro_str
@@ -114,6 +116,8 @@ class MacroToCallable():
         return self.interpreter.parse_text(new_str, param)
 
 class FakeStatResult():
+    """ Works like a `os.stat_result`, but is writable and only contains what we want
+    """
     st_size: int  # size of file, in bytes,
     st_atime: float  # time of most recent access,
     st_mtime: float  # time of most recent content modification,
@@ -145,6 +149,8 @@ class ItemEntry():
         return self._stat
 
 class ZipItemEntry(ItemEntry):
+    """ Works for previewing files inside a zip
+    """
     name: str
     path: str
     url: str
@@ -154,14 +160,14 @@ class ZipItemEntry(ItemEntry):
         levels = zipinfo.filename.split('/')
         self.name = levels[-2] if zipinfo.filename[-1] == '/' else levels[-1]
         self.path = zip_file_path_real
-        self.url = zip_file_path_virtual + '?getitem=' + zipinfo.filename
+        self.url = zip_file_path_virtual + '?getitem=' + purify_filename(zipinfo.filename)
         self._is_dir = zipinfo.filename[-1:] == '/'
         zip_file_stats = FakeStatResult(os.stat(zip_file_path_real))
         zip_file_stats.st_size = zipinfo.file_size
         self._stat = zip_file_stats
 
 class FileList():
-    """ A file list.  
+    """ A file list used in `tplLib.py` for generating `%list%`  
         `items`: A `list` of `ItemEntry`.
     """
     items: list
@@ -197,7 +203,8 @@ class FileList():
             #     continue
             stats = e.stat()
             url = e.url + ('' if e.is_file() and e.url[-1] != '/' else '/')
-            name = e.name.replace('|', '&#124;')
+            url = '{:' + url + ':}'
+            name = '{:' + e.name + ':}'
             last_modified = str(datetime.datetime.fromtimestamp(stats.st_mtime)).split('.')[0]
             last_modified_dt = stats.st_mtime
             size = stats.st_size
