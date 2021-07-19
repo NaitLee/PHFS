@@ -1,12 +1,12 @@
 
-import os, io, tarfile, tempfile, mimeLib, time, re, random, hashlib, zipfile
+import os, io, tarfile, tempfile, mimeLib, time, re, random, hashlib, zipfile, datetime, time
 import hashLib
 from werkzeug.wrappers import Request, Response
 from werkzeug.utils import send_file
 from tplLib import Interpreter
 from classesLib import UniParam, Page, FileList, ItemEntry, ZipItemEntry
 from cfgLib import Config, Account
-from helpersLib import get_dirname, if_upload_allowed_in, purify_filename, wildcard2re, join_path
+from helpersLib import get_dirname, if_upload_allowed_in, purify_filename, wildcard2re, join_path, year_letter_from_number
 from i18nLib import I18n
 
 builtin_sections = ('sha256.js')
@@ -42,6 +42,22 @@ class PHFSServer():
     cached_zip_files = {}
     def __init__(self):
         pass
+    def log(self, h='0.0.0.0', l='-', u='-', t='[01/01/0001:00:00:00 +0000]', m='GET', U='/', q='', H='HTTP/1.1', s=200, b=0):
+        print(
+            Config.log_format
+                .replace('%h', h)
+                .replace('%l', l)
+                .replace('%u', u or '-')
+                .replace('%t', t)
+                .replace('%r', '%m %U%q %H')
+                .replace('%m', m)
+                .replace('%U', U)
+                .replace('%q', ('?' + q) if q else '')
+                .replace('%H', H or 'HTTP/1.1')
+                .replace('%s', str(s))
+                .replace('%>s', str(s))
+                .replace('%b', str(b))
+        )
     def not_found_response(self, request: PHFSRequest) -> Response:
         page = self.interpreter.get_page('error-page', UniParam(['not found', 404], interpreter=self.interpreter, request=request, statistics=self.statistics))
         return Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime('*.html'))
@@ -49,19 +65,44 @@ class PHFSServer():
         page = self.interpreter.get_page('error-page', UniParam(['unauthorized', 403], interpreter=self.interpreter, request=request, statistics=self.statistics))
         return Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime('*.html'))
     def get_current_account(self, request: PHFSRequest) -> tuple:
-        return self.statistics.accounts.get(request.host, ('', ''))
+        return self.statistics.accounts.get(request.cookies.get('HFS_SID_', ''), ('', ''))
     def return_response(self, request: PHFSRequest, response: Response, environ, start_response):
         if 'Location' in response.headers:
             response.status_code = 302
         if 'HFS_SID_' not in request.cookies:
             sid = hashlib.sha256(bytes([random.randint(0, 255) for _ in range(32)])).hexdigest()
             response.headers['Set-Cookie'] = 'HFS_SID_=%s; HttpOnly' % sid
+        account_name = self.get_current_account(request)[0]
+        current_time = datetime.datetime.now()
+        current_timezone = current_time.astimezone().tzinfo.utcoffset(None).seconds / 60 / 60
+        formatted_time = '[%s/%s/%s:%s:%s:%s %s]' % (
+            '%02i' % current_time.day,
+            year_letter_from_number(current_time.month),
+            '%04i' % current_time.year,
+            '%02i' % current_time.hour,
+            '%02i' % current_time.minute,
+            '%02i' % current_time.second,
+            ('-' if current_timezone < 0 else '+') + ('%04i' % abs(current_timezone * 100))
+        )
+        self.log(
+            request.remote_addr,
+            '-',
+            account_name,
+            formatted_time,
+            request.method,
+            request.path,
+            request.query_string.decode('utf-8'),
+            '',
+            response.status_code,
+            response.content_length
+        )
         return response(environ, start_response)
     def wsgi(self, environ, start_response):
         request_initial = Request(environ)
+        request_initial.path = request_initial.path.replace('/..', '')
         response = Response('bad request', 400)
         page = Page('', 400)
-        path = request_initial.path.replace('/..', '')
+        path = request_initial.path
         resource = join_path(Config.base_path, path)
         request = PHFSRequest(environ, path, resource)
         self.request = request
