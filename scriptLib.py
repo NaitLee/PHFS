@@ -1,5 +1,5 @@
 
-import datetime, time, re, os, math
+import datetime, time, re, os, math, urllib.parse
 from classesLib import MacroResult, UniParam, MacroToCallable
 from helpersLib import concat_dict, wildcard2re, if_upload_allowed_in, float_to_str, is_number
 from cfgLib import Config
@@ -8,13 +8,6 @@ class Commands():
     TRUE = '1'
     FALSE = ''
     FALSE_VALUES = ('', '0', '0.0')
-    class VarContainer():
-        def __init__(self):
-            self.vars = {}
-        def __setitem__(self, key, value):
-            self.vars[key] = value
-        def __getitem__(self, key):
-            return self.vars[key] if key in self.vars else ''
     def __init__(self):
         self.global_vars = {}
         self.commands_map = {
@@ -64,6 +57,11 @@ class Commands():
             'no pipe': self.no_pipe,
             'cut': self.cut,
             'calc': self.calc,
+            'chr': self.macro_chr,
+            'js encode': self.js_encode,
+            'count': self.macro_count,
+            'from table': self.from_table,
+            'set table': self.set_table,
             'round': lambda p: MacroResult(float_to_str(round(float(p[1]), int(p[2])))),
             'add': lambda p: MacroResult(float_to_str(float(p[1]) + float(p[2]))),
             'sub': lambda p: MacroResult(float_to_str(float(p[1]) - float(p[2]))),
@@ -72,10 +70,16 @@ class Commands():
             'mod': lambda p: MacroResult(float_to_str(int(p[1]) % int(p[2]))),
             'min': lambda p: MacroResult(float_to_str(min([float(x) for x in p.params[1:]]))),
             'max': lambda p: MacroResult(float_to_str(max([float(x) for x in p.params[1:]]))),
+            'count substring': lambda p: MacroResult(str(p[1].count(p[2]))),
             'repeat': lambda p: MacroResult(p[2] * int(p[1])),
             'lower': lambda p: MacroResult(p[1].lower()),
             'upper': lambda p: MacroResult(p[1].upper()),
             'trim': lambda p: MacroResult(p[1].strip()),
+            'encodeuri': lambda p: MacroResult(urllib.parse.quote(p[1])),
+            'decodeuri': lambda p: MacroResult(urllib.parse.unquote(p[1])),
+            'convert': lambda p: MacroResult(p[3]),
+            'force ansi': lambda p: MacroResult(p[1]),
+            'maybe utf8': lambda p: MacroResult(p[1]),
             'cookie': self.cookie,
             '_unsupported': lambda param: MacroResult(','.join(param.params))
         }
@@ -120,6 +124,38 @@ class Commands():
         return key in param.request.variables or key in param.statistics.variables
     def calc(self, param: UniParam):
         # TODO
+        return MacroResult('0')
+    def macro_chr(self, param: UniParam):
+        result = ''
+        for i in param.params[1:]:
+            if i[0:1].lower() == 'x':
+                result = result + chr(int(i[1:], 16))
+            else:
+                result = result + chr(int(i, 10))
+        return MacroResult(result)
+    def js_encode(self, param: UniParam):
+        param.params.append('\'"')
+        result = param[1]
+        for i in param[2]:
+            result = result.replace(i, '\\x%02x' % ord(i))
+        return MacroResult(result)
+    def macro_count(self, param: UniParam):
+        counts = param.request.counts
+        if param[1] in counts:
+            counts[param[1]] += 1
+            return MacroResult(str(counts[param[1]]))
+        else:
+            counts[param[1]] = 0
+            return MacroResult('0')
+    def from_table(self, param: UniParam):
+        return MacroResult(param.request.table.get(param[1], {}).get(param[2], ''))
+    def set_table(self, param: UniParam):
+        table = param.request.table
+        table_name = param[1]
+        key, value = param[2].split('=', 2)
+        if table_name not in table:
+            table[table_name] = {}
+        table[table_name][key] = value
         return MacroResult('')
     def no_pipe(self, param: UniParam):
         return MacroResult('{:|:}'.join(param[1:]))

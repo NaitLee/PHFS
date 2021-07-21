@@ -14,6 +14,10 @@ builtin_sections = ('sha256.js')
 class PHFSRequest(Request):
     # Session variables for macro execution
     variables = {}
+    # For {.count.}, values will be int
+    counts = {}
+    # For {.from table.} and {.set table.}, there will be nested tables
+    table = {}
     def __init__(self, environ, path_virtual='/', path_real='/'):
         super().__init__(environ)
         self.path_virtual = path_virtual
@@ -42,7 +46,7 @@ class PHFSServer():
     cached_zip_files = {}
     def __init__(self):
         pass
-    def log(self, h='0.0.0.0', l='-', u='-', t='[01/01/0001:00:00:00 +0000]', m='GET', U='/', q='', H='HTTP/1.1', s=200, b=0):
+    def log_request(self, h='0.0.0.0', l='-', u='-', t='[01/01/0001:00:00:00 +0000]', m='GET', U='/', q='', H='HTTP/1.1', s=200, b=0):
         print(
             Config.log_format
                 .replace('%h', h)
@@ -58,6 +62,8 @@ class PHFSServer():
                 .replace('%>s', str(s))
                 .replace('%b', str(b))
         )
+    def log_message(self, message: str):
+        print(message)
     def not_found_response(self, request: PHFSRequest) -> Response:
         page = self.interpreter.get_page('error-page', UniParam(['not found', 404], interpreter=self.interpreter, request=request, statistics=self.statistics))
         return Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime('*.html'))
@@ -84,7 +90,7 @@ class PHFSServer():
             '%02i' % current_time.second,
             ('-' if current_timezone < 0 else '+') + ('%04i' % abs(current_timezone * 100))
         )
-        self.log(
+        self.log_request(
             request.remote_addr,
             '-',
             account_name,
@@ -106,6 +112,12 @@ class PHFSServer():
         resource = join_path(Config.base_path, path)
         request = PHFSRequest(environ, path, resource)
         self.request = request
+        if os.path.isdir(resource):
+            # If there's a index.html inside folder, show that
+            for i in ['index.html', 'index.htm', 'default.html', 'default.htm']:
+                if os.path.isfile(join_path(resource, i)):
+                    path = join_path(path, i)
+                    resource = join_path(resource, i)
         uni_param = UniParam([], interpreter=self.interpreter, request=request, filelist=FileList([]), statistics=self.statistics)
         levels_virtual = path.split('/')
         levels_real = resource.split('/')

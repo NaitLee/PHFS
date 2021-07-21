@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-import urllib, os, shutil
+import urllib.parse, os, shutil
 
 def smartcopy(src, dst):
     if os.path.isfile(src):
