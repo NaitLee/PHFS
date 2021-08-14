@@ -1,8 +1,8 @@
 
-import datetime, time, re, os, math, urllib.parse
+import datetime, time, re, os, math, urllib.parse, shutil, hashlib
 from classesLib import MacroResult, UniParam, MacroToCallable
-from helpersLib import concat_dict, wildcard2re, if_upload_allowed_in, float_to_str, is_number
-from cfgLib import Config
+from helpersLib import concat_dict, wildcard2re, if_upload_allowed_in, float_to_str, is_number, join_path, smartcopy, smartmove
+from cfgLib import Config, Account
 
 class Commands():
     TRUE = '1'
@@ -81,7 +81,24 @@ class Commands():
             'force ansi': lambda p: MacroResult(p[1]),
             'maybe utf8': lambda p: MacroResult(p[1]),
             'cookie': self.cookie,
-            '_unsupported': lambda param: MacroResult(','.join(param.params))
+            'load': self.load,
+            'save': self.save,
+            'append': self.append,
+            'delete': self.delete,
+            'rename': self.rename,
+            'md5 file': self.md5_file,
+            'copy': self.copy,
+            'move': self.move,
+            'chdir': self.chdir,
+            'mkdir': self.mkdir,
+            'exists': self.exists,
+            'is file': self.is_file,
+            'filename': self.filename,
+            'filepath': self.filepath,
+            'filetime': self.filetime,
+            'disk free': lambda p: MacroResult(shutil.disk_usage(p.request.path_real_dir).free),
+            'dir': self.macro_dir,
+            '_unsupported': self._unsupported
         }
     def __getitem__(self, key):
         return self.commands_map.get(key, self.commands_map['_unsupported'])
@@ -92,6 +109,9 @@ class Commands():
         return False if value.strip() in self.FALSE_VALUES else True
     def _bool(self, value: bool) -> str:
         return self.TRUE if value else self.FALSE
+    def _unsupported(self, param: UniParam):
+        print('Warning: Unsupported macro "%s"' % param[0])
+        return MacroResult('')
     def sym_style(self, param: UniParam):
         return param.interpreter.get_section('style', param, True, True)
     def sym_user(self, param: UniParam):
@@ -122,6 +142,114 @@ class Commands():
             return param.statistics.variables.get(key, self.FALSE)
     def _have_variable(self, key: str, param: UniParam) -> bool:
         return key in param.request.variables or key in param.statistics.variables
+    def _get_existing_filename(self, path: str):
+        # Priority: in VFS (base_path), relative to (P)HFS cd path, real path
+        predict_paths = [
+            join_path(Config.base_path, path),
+            path[1:] if path[0:1] == '/' else path,
+            path
+        ]
+        for i in predict_paths:
+            if os.path.exists(i):
+                return i
+        return None
+    def _return_empty(self):
+        return MacroResult('')
+    def load(self, param: UniParam):
+        optional_params = self._get_optional_params(param, 'from', 'size', 'to', 'var')
+        p_from = 0
+        p_to = 0
+        p_size = 0
+        data = ''
+        path = self._get_existing_filename(param[1])
+        if path != None:
+            p_from = int(optional_params.get('from', '0'))
+            p_to = int(optional_params.get('to', str(os.path.getsize(path))))
+            p_size = int(optional_params.get('size', str(p_to - p_from)))
+            f = open(path, 'rb')
+            f.seek(p_from)
+            data = f.read(p_size).decode('utf-8')
+            f.close()
+        if optional_params.get('var', '') != '':
+            param.request.variables[optional_params['var']] = data
+            data = ''
+        return MacroResult(data)
+    def save(self, param: UniParam):
+        optional_params = self._get_optional_params(param, 'var')
+        path = self._get_existing_filename(param[1])
+        f = open(path or param[1], 'w', encoding='utf-8')
+        if optional_params.get('var', '') == '':
+            f.write(param[2])
+        else:
+            f.write(param.request.variables[optional_params['var']])
+        f.close()
+        return self._return_empty()
+    def append(self, param: UniParam):
+        path = self._get_existing_filename(param[1])
+        f = open(path or param[1], 'a', encoding='utf-8')
+        f.write(param[2])
+        f.close()
+        return self._return_empty()
+    def delete(self, param: UniParam):
+        path = self._get_existing_filename(param[1])
+        shutil.rmtree(path, True)
+        return self._return_empty()
+    def rename(self, param: UniParam):
+        path = self._get_existing_filename(param[1])
+        if path != None:
+            os.rename(path, os.path.dirname(path) + param[2])
+        return self._return_empty()
+    def md5_file(self, param: UniParam):
+        path = self._get_existing_filename(param[1])
+        hash_str = ''
+        if path != None:
+            hash_str = hashlib.md5(path).hexdigest()
+        return MacroResult(hash_str)
+    def copy(self, param: UniParam):
+        path = self._get_existing_filename(param[1])
+        if path != None:
+            smartcopy(path, param[2])
+        return self._return_empty()
+    def move(self, param: UniParam):
+        path = self._get_existing_filename(param[1])
+        if path != None:
+            smartmove(path, param[2])
+        return self._return_empty()
+    def chdir(self, param: UniParam):
+        path = self._get_existing_filename(param[1])
+        if path != None:
+            os.chdir(param[1])
+        return self._return_empty()
+    def mkdir(self, param: UniParam):
+        path = self._get_existing_filename(param[1])
+        os.makedirs(path or param[1], exist_ok=True)
+        return self._return_empty()
+    def exists(self, param: UniParam):
+        path = self._get_existing_filename(param[1])
+        return MacroResult(self._bool(path != None))
+    def is_file(self, param: UniParam):
+        path = self._get_existing_filename(param[1])
+        return MacroResult(self._bool(os.path.isfile(path)))
+    def filename(self, param: UniParam):
+        return MacroResult(os.path.basename(param[1]))
+    def filesize(self, param: UniParam):
+        size = 0
+        path = self._get_existing_filename(param[1])
+        if path != None:
+            size = os.path.getsize(path)
+        return MacroResult(str(size))
+    def filepath(self, param: UniParam):
+        return MacroResult(os.path.dirname(param[1]))
+    def filetime(self, param: UniParam):
+        return MacroResult(os.path.getmtime(param[1]))
+    def macro_dir(self, param: UniParam):
+        optional_params = self._get_optional_params(param, 'separator')
+        separator = optional_params.get('separator', '|')
+        path = self._get_existing_filename(param[1])
+        result = ''
+        if path != None:
+            result = separator.join(os.listdir(path))
+        return MacroResult(result)
     def calc(self, param: UniParam):
         # TODO
         return MacroResult('0')
@@ -156,7 +284,7 @@ class Commands():
         if table_name not in table:
             table[table_name] = {}
         table[table_name][key] = value
-        return MacroResult('')
+        return self._return_empty()
     def no_pipe(self, param: UniParam):
         return MacroResult('{:|:}'.join(param[1:]))
     def substring(self, param: UniParam):
@@ -245,19 +373,19 @@ class Commands():
         return MacroResult(result, headers=headers)
     def macro_set(self, param: UniParam):
         self._set_variable(param[1], param[2], param)
-        return MacroResult('')
+        return self._return_empty()
     def inc(self, param: UniParam):
         if len(param.params) > 2:
             self._set_variable(param[1], float_to_str(float(self._get_variable(param[1], param)) + float(param[2])), param)
         elif len(param.params) == 2:
             self._set_variable(param[1], float_to_str(float(self._get_variable(param[1], param)) + 1), param)
-        return MacroResult('')
+        return self._return_empty()
     def dec(self, param: UniParam):
         if len(param.params) > 2:
             self._set_variable(param[1], float_to_str(float(self._get_variable(param[1], param)) - float(param[2])), param)
         elif len(param.params) == 2:
             self._set_variable(param[1], float_to_str(float(self._get_variable(param[1], param)) - 1), param)
-        return MacroResult('')
+        return self._return_empty()
     def cut(self, param: UniParam):
         if len(param[1]) == 0:
             param[1] = '0'
@@ -269,11 +397,6 @@ class Commands():
             start, end = end, start
         string = param[3]
         return MacroResult(string[start:end])
-    def filesize(self, param: UniParam):
-        size = 0
-        if os.path.exists(param.request.path_real):
-            os.stat(param.request.path_real).st_size
-        return MacroResult(str(size))
     def header(self, param: UniParam):
         return MacroResult(param.request.headers.get(param[1], ''))
     def breadcrumbs(self, param: UniParam):
@@ -311,7 +434,7 @@ class Commands():
     def macro_break(self, param: UniParam):
         return MacroResult('', do_break=True)
     def comment(self, param: UniParam):
-        return MacroResult('')
+        return self._return_empty()
     def replace(self, param: UniParam):
         p = param.params
         string = p[-1]
@@ -389,8 +512,14 @@ class Commands():
         # TODO
         key = param[1]
         result = self.FALSE
-        if key in ('can access', 'can recur', 'can archive', 'stop spiders'):
+        if key in ('can recur', 'can archive', 'stop spiders'):
             result = self.TRUE
+        elif key in ('can access'):
+            account_name = param.statistics.accounts.get(param.request.cookies.get('HFS_SID_', ''), ('', ''))
+            result = self._bool(Account.can_access(account_name, param.request.path_real, True))
+        elif key in ('can delete'):
+            account_name = param.statistics.accounts.get(param.request.cookies.get('HFS_SID_', ''), ('', ''))
+            result = self._bool(Account.can_access(account_name, param.request.path_real, False))
         elif key == 'can upload':
             result = self._bool(if_upload_allowed_in(param.request.path_real, Config))
         elif key == 'accounts':

@@ -53,8 +53,8 @@ class AccountManager(DictAsObject):
             account_name = ''
         detail = self.accounts[account_name]
         return detail
-    def can_access(self, account_name: str, path: str) -> bool:
-        status = account_name != ''
+    def can_access(self, account_name: str, path: str, guest_allowed=True) -> bool:
+        status = (account_name != '') if guest_allowed else False
         for i in self.get_account_detail(account_name)[1]:
             if path.startswith(i):
                 status = True

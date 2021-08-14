@@ -1,5 +1,5 @@
 
-import os, io, tarfile, tempfile, mimeLib, time, re, random, hashlib, zipfile, datetime, time
+import os, io, tarfile, tempfile, mimeLib, time, re, random, hashlib, zipfile, datetime, time, shutil
 import hashLib
 from werkzeug.wrappers import Request, Response
 from werkzeug.utils import send_file
@@ -29,7 +29,7 @@ class PHFSRequest(Request):
 class PHFSStatistics():
     # Listing completed? for {.after the list.}
     listing_completed = False
-    # Accounts are saved as a dict, key is IP and value is tuple (username, sid)
+    # Accounts are saved as a dict, key is sid and value is tuple (username, IP)
     accounts = {}
     # Global variables for macro execution
     variables = {}
@@ -124,7 +124,7 @@ class PHFSServer():
         if resource[-1:] != '/' and os.path.isdir(resource):
             response = Response('', 302, {'Location': path + '/'})
             return self.return_response(request, response, environ, start_response)
-        if not Account.can_access(self.get_current_account(request)[0], resource):
+        if not Account.can_access(self.get_current_account(request)[0], resource, True):
             response = self.unauth_response(request)
             return self.return_response(request, response, environ, start_response)
         if request.args.get('tpl', '') == 'list':
@@ -148,6 +148,18 @@ class PHFSServer():
                             upload_result[filename] = (False, str(e))
                     page = self.interpreter.get_page('upload-results', UniParam([upload_result], interpreter=self.interpreter, request=request, statistics=self.statistics))
                     response = Response(page.content, page.status, page.headers, mimetype=mimeLib.getmime('*.html'))
+                return self.return_response(request, response, environ, start_response)
+            if request.form.get('action', '') == 'delete':
+                if not Account.can_access(self.get_current_account(request)[0], resource, False):
+                    response = Response('forbidden', 403)
+                else:
+                    filelist = request.form.getlist('selection')
+                    try:
+                        for i in filelist:
+                            shutil.rmtree(Config.base_path + i, True)
+                        response = Response('ok', 200)
+                    except e:
+                        response = Response(str(e), 500)
                 return self.return_response(request, response, environ, start_response)
         if 'mode' in request.args:
             # urlvar mode
@@ -173,6 +185,20 @@ class PHFSServer():
                 if sid in self.statistics.accounts:
                     del self.statistics.accounts[sid]
                 response = Response('ok', 200, {'Set-Cookie': 'HFS_SID_=; HttpOnly; Max-Age=0'})
+            elif mode == 'archive':
+                tmp = tempfile.TemporaryFile(mode='w+b')
+                tar = tarfile.open(mode='w', fileobj=tmp)
+                path_real = request.path_real_dir + '/'
+                filelist = request.form.getlist('selection')
+                final_list_without_dots = [((Config.base_path if x[0:1] == '/' else path_real) + x) for x in filelist if x[0:1] != '.']
+                final_list_with_dots = [((Config.base_path if x[0:1] == '/' else path_real) + x) for x in filelist]
+                shown_files = final_list_without_dots if Config.hide_dots else final_list_with_dots
+                for i in shown_files:
+                    is_recursive = 'recursive' in request.args or bool(Config.recur_archive)
+                    tar.add(i, i, recursive=is_recursive)
+                tar.close()     # Pointer is at the end of file
+                tmp.seek(0)     # Read at start
+                response = send_file(tmp, environ, mimetype=mimeLib.getmime('*.tar'), as_attachment=True, download_name=os.path.basename(request.path_virtual_dir) + '.selection.tar')
             return self.return_response(request, response, environ, start_response)
         elif 'search' in request.args:
             # Search, with re.findall

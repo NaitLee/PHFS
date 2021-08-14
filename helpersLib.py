@@ -8,6 +8,9 @@ def smartcopy(src, dst):
     else:
         shutil.copytree(src, dst + '/' + os.path.basename(src) if os.path.exists(dst) else dst)
 
+def smartmove(src, dst):
+    shutil.move(src, dst + '/' + os.path.basename(src) if os.path.exists(dst) else dst)
+
 def sort(l, m, f):
     """ Bubble sort.  
         `l`: the list to be sorted.  

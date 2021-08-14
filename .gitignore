@@ -7,3 +7,4 @@ wsgiserver.py
 _test.py
 sha256.js
 *~
+debug.log

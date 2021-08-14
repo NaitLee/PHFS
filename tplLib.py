@@ -269,7 +269,7 @@ class Interpreter():
             position += 1
         if macro_level != 0:
             raise MacroNotClosedProperly('Macro not closed properly at level %i' % macro_level)
-        text = text.replace('{:', '').replace(':}', '')
+        # text = self.unquote(text, param, False).content
         return MacroResult(text, do_break=broken, disconnect=disconnect, headers=headers)
     def unquote(self, text: str, param: UniParam, do_parse=True) -> MacroResult:
         quote_level = 0
