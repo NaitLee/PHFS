@@ -6,6 +6,7 @@ from cfgLib import Config, Account
 
 class Commands():
     TRUE = '1'
+    TRUE2 = ' '
     FALSE = ''
     FALSE_VALUES = ('', '0', '0.0')
     def __init__(self):
@@ -44,6 +45,7 @@ class Commands():
             'set': self.macro_set,
             'inc': self.inc,
             'dec': self.dec,
+            'pos': self.pos,
             'disconnect': self.disconnect,
             'add header': self.add_header,
             'time': self.time,
@@ -55,6 +57,7 @@ class Commands():
             'urlvar': self.urlvar,
             'postvar': self.postvar,
             'no pipe': self.no_pipe,
+            'pipe': self.no_pipe,
             'cut': self.cut,
             'calc': self.calc,
             'chr': self.macro_chr,
@@ -96,8 +99,10 @@ class Commands():
             'filename': self.filename,
             'filepath': self.filepath,
             'filetime': self.filetime,
+            'add to log': self.add_to_log,
             'disk free': lambda p: MacroResult(shutil.disk_usage(p.request.path_real_dir).free),
             'dir': self.macro_dir,
+            'is file protected': lambda p: MacroResult(self.FALSE),
             '_unsupported': self._unsupported
         }
     def __getitem__(self, key):
@@ -153,7 +158,24 @@ class Commands():
             if os.path.exists(i):
                 return i
         return None
+    def _predict_filename(self, path: str):
+        # Priority: in VFS (base_path), relative to (P)HFS cd path, real path
+        levels = path.split('/')
+        for i in range(len(levels) - 1, 0, -1):
+            existing_path = '/'.join(levels[0:i])
+            predict_paths = [
+                join_path(Config.base_path, existing_path),
+                existing_path[1:] if existing_path[0:1] == '/' else existing_path,
+                existing_path
+            ]
+            for j in predict_paths:
+                if os.path.exists(j):
+                    path = join_path(j, '/'.join(levels[i:]))
+        return path
     def _return_empty(self):
+        return MacroResult('')
+    def add_to_log(self, param: UniParam):
+        print(param[1])
         return MacroResult('')
     def load(self, param: UniParam):
         optional_params = self._get_optional_params(param, 'from', 'size', 'to', 'var')
@@ -176,29 +198,29 @@ class Commands():
         return MacroResult(data)
     def save(self, param: UniParam):
         optional_params = self._get_optional_params(param, 'var')
-        path = self._get_existing_filename(param[1])
+        path = self._predict_filename(param[1])
         f = open(path or param[1], 'w', encoding='utf-8')
         if optional_params.get('var', '') == '':
             f.write(param[2])
         else:
             f.write(param.request.variables[optional_params['var']])
         f.close()
-        return self._return_empty()
+        return MacroResult(self.TRUE2)
     def append(self, param: UniParam):
         path = self._get_existing_filename(param[1])
         f = open(path or param[1], 'a', encoding='utf-8')
         f.write(param[2])
         f.close()
-        return self._return_empty()
+        return MacroResult(self.TRUE2)
     def delete(self, param: UniParam):
         path = self._get_existing_filename(param[1])
         shutil.rmtree(path, True)
-        return self._return_empty()
+        return MacroResult(self.TRUE2)
     def rename(self, param: UniParam):
         path = self._get_existing_filename(param[1])
         if path != None:
-            os.rename(path, os.path.dirname(path) + param[2])
-        return self._return_empty()
+            os.rename(path, Config.base_path + param[2])
+        return MacroResult(self.TRUE2)
     def md5_file(self, param: UniParam):
         path = self._get_existing_filename(param[1])
         hash_str = ''
@@ -209,21 +231,21 @@ class Commands():
         path = self._get_existing_filename(param[1])
         if path != None:
             smartcopy(path, param[2])
-        return self._return_empty()
+        return MacroResult(self.TRUE2)
     def move(self, param: UniParam):
         path = self._get_existing_filename(param[1])
         if path != None:
             smartmove(path, param[2])
-        return self._return_empty()
+        return MacroResult(self.TRUE2)
     def chdir(self, param: UniParam):
         path = self._get_existing_filename(param[1])
         if path != None:
             os.chdir(param[1])
-        return self._return_empty()
+        return MacroResult(self.TRUE2)
     def mkdir(self, param: UniParam):
-        path = self._get_existing_filename(param[1])
+        path = self._predict_filename(param[1])
         os.makedirs(path or param[1], exist_ok=True)
-        return self._return_empty()
+        return MacroResult(self.TRUE2)
     def exists(self, param: UniParam):
         path = self._get_existing_filename(param[1])
         return MacroResult(self._bool(path != None))
@@ -253,6 +275,13 @@ class Commands():
     def calc(self, param: UniParam):
         # TODO
         return MacroResult('0')
+    def pos(self, param: UniParam):
+        optional_params = self._get_optional_params(param, 'var')
+        str_to_find = param[2]
+        if 'var' in optional_params:
+            str_to_find = self._get_variable(optional_params['var'], param)
+        position = str_to_find.find(param[1]) + 1
+        return MacroResult(self.FALSE if position == 0 else str(position))
     def macro_chr(self, param: UniParam):
         result = ''
         for i in param.params[1:]:
@@ -432,7 +461,9 @@ class Commands():
     def macro_not(self, param: UniParam):
         return MacroResult(self._bool(not self._judge(param[1])))
     def macro_break(self, param: UniParam):
-        return MacroResult('', do_break=True)
+        optional_params = self._get_optional_params(param, 'if', 'result')
+        condition = self._judge(param.interpreter.unquote(optional_params.get('if', self.TRUE), param).content)
+        return MacroResult(optional_params.get('result', '') if condition else '', do_break=condition)
     def comment(self, param: UniParam):
         return self._return_empty()
     def replace(self, param: UniParam):
@@ -459,6 +490,7 @@ class Commands():
                 second = float_to_str(float(second))
             if first != second:
                 status = False
+                break
         return MacroResult(self._bool(status))
     def not_equal(self, param: UniParam):
         p = param.params
@@ -471,6 +503,7 @@ class Commands():
                 second = float_to_str(float(second))
             if first == second:
                 status = False
+                break
         return MacroResult(self._bool(status))
     def greater_than(self, param: UniParam):
         p = param.params
@@ -515,10 +548,10 @@ class Commands():
         if key in ('can recur', 'can archive', 'stop spiders'):
             result = self.TRUE
         elif key in ('can access'):
-            account_name = param.statistics.accounts.get(param.request.cookies.get('HFS_SID_', ''), ('', ''))
+            account_name = param.statistics.accounts.get(param.request.cookies.get('HFS_SID_', ''), ('', ''))[0]
             result = self._bool(Account.can_access(account_name, param.request.path_real, True))
         elif key in ('can delete'):
-            account_name = param.statistics.accounts.get(param.request.cookies.get('HFS_SID_', ''), ('', ''))
+            account_name = param.statistics.accounts.get(param.request.cookies.get('HFS_SID_', ''), ('', ''))[0]
             result = self._bool(Account.can_access(account_name, param.request.path_real, False))
         elif key == 'can upload':
             result = self._bool(if_upload_allowed_in(param.request.path_real, Config))

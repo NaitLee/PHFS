@@ -103,7 +103,7 @@ class MacroToCallable():
     """ Make a string representing a macro (usually in special:alias) can be called as those in `scriptLib.py`
     """
     def __init__(self, macro_str: str, param: UniParam, possibly_missing_markers=False):
-        macro_str = param.interpreter.unquote(macro_str, param, False).content
+        # macro_str = param.interpreter.unquote(macro_str, param, False).content
         if possibly_missing_markers:
             if not (macro_str[0:2] == '{.' and macro_str[-2:] == '.}'):
                 macro_str = '{.' + macro_str + '.}'

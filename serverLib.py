@@ -6,7 +6,7 @@ from werkzeug.utils import send_file
 from tplLib import Interpreter
 from classesLib import UniParam, Page, FileList, ItemEntry, ZipItemEntry
 from cfgLib import Config, Account
-from helpersLib import get_dirname, if_upload_allowed_in, purify_filename, wildcard2re, join_path, year_letter_from_number
+from helpersLib import get_dirname, if_upload_allowed_in, purify_filename, wildcard2re, join_path, year_letter_from_number, smartremove
 from i18nLib import I18n
 
 builtin_sections = ('sha256.js')
@@ -156,10 +156,10 @@ class PHFSServer():
                     filelist = request.form.getlist('selection')
                     try:
                         for i in filelist:
-                            shutil.rmtree(Config.base_path + i, True)
+                            smartremove(Config.base_path + i)
                         response = Response('ok', 200)
-                    except e:
-                        response = Response(str(e), 500)
+                    except Exception as err:
+                        response = Response(str(err), 500)
                 return self.return_response(request, response, environ, start_response)
         if 'mode' in request.args:
             # urlvar mode

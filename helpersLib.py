@@ -8,6 +8,12 @@ def smartcopy(src, dst):
     else:
         shutil.copytree(src, dst + '/' + os.path.basename(src) if os.path.exists(dst) else dst)
 
+def smartremove(src):
+    if os.path.isfile(src):
+        os.remove(src)
+    else:
+        shutil.rmtree(src)
+
 def smartmove(src, dst):
     shutil.move(src, dst + '/' + os.path.basename(src) if os.path.exists(dst) else dst)
 

@@ -54,18 +54,37 @@ class AccountManager(DictAsObject):
         detail = self.accounts[account_name]
         return detail
     def can_access(self, account_name: str, path: str, guest_allowed=True) -> bool:
-        status = (account_name != '') if guest_allowed else False
-        for i in self.get_account_detail(account_name)[1]:
-            if path.startswith(i):
-                status = True
-                break
+        """ Modes:
+            0: No account have specified access to this path,
+                If guest_allowed, he/she can access it
+            1: An account have specified access to this path,
+                Guest cannot access it anymore
+            2: Other accounts have specified access to this (deeper) path,
+                Previous account cannot access it anymore
+        """
+        status = False
+        mode = 0
+        
+        # Check if current account have access to this path
+        if account_name != '':
+            for i in self.get_account_detail(account_name)[1]:
+                if path.startswith(i):
+                    mode += 1
+                    break
+        # Check if other accounts have access to this (deeper) path
         for i in self.accounts:
             if i == account_name or i == '':
                 continue
             for j in self.accounts[i][1]:
                 if path.startswith(j):
-                    status = False
+                    mode += 1
                     break
+        if mode == 0:
+            status = guest_allowed
+        elif mode == 1:
+            status = not (account_name == '' and guest_allowed)
+        elif mode == 2:
+            status = False
         return status
 
 Account = AccountManager()

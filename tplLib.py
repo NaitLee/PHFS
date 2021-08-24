@@ -304,24 +304,25 @@ class Interpreter():
     }
     operation_signs = ('<>', '!=', '<=', '>=', '<', '>', '=')
     def to_normal_macro(self, params: list):
-        params = [x.strip() for x in params]
+        params = [x for x in params]    # deep copy
+        params[0] = params[0].strip()
         if params[0] == '':
             return params
-        if params[0][0] in self.shortcuts:
+        if params[0] not in self.operation_signs:
+            for i in self.operation_signs:
+                if i in params[0] and i != params[0]:
+                    p = params[0].split(i)
+                    params = [i, p[0].strip(), p[1].strip()]
+                    break
+        if params[0][0] in self.shortcuts and params[0] != '!=':
             params.append(params[0][1:])
             params[0] = self.shortcuts[params[0][0]]
-        for i in self.operation_signs:
-            if i in params[0] and i != params[0]:
-                p = params[0].split(i)
-                params = [i, p[0], p[1]]
-                break
-        params = [x.strip() for x in params]
         return params
     def exec_macro(self, params: list, param: UniParam) -> MacroResult:
         params = self.to_normal_macro(params)
         if params[-1].split('/')[-1] == params[0] and len(params) > 2:
             params[-1] = '/'.join(params[-1].split('/')[0:-1])
-        params = [strip_starting_spaces(x) for x in params]
+        # params = [strip_starting_spaces(x) for x in params]
         param.params = params
         result = self.handler[params[0]](param)
         return result
