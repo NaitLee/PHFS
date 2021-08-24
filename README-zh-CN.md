@@ -13,16 +13,17 @@
 | 👏 可用功能： | 🕳 计划功能： |
 | ---- | ---- |
 | 文件列表，下载 | 虚拟文件系统（VFS） |
-| 排序文件，打包下载 | 文件操作 |
-| 上传，搜索 | 封禁、限制 |
-| 账户、登录 | 其他 |
+| 排序文件，打包下载 | 封禁、限制 |
+| 上传，搜索 | 其他 |
+| 账户、登录 |  |
+| 文件操作 |  |
 
 
 🍉 支持的平台:
 
 - Windows 7 及以上
 - GNU/Linux, \*nix, \*BSD
-- Android，使用 [QPython 3L](https://www.qpython.org/)
+- Android，使用 [QPython 3L](https://www.qpython.org/) 或装有 `python3` 的 [Termux](https://termux.com/)
 - ARM 开发板，如树莓派，使用 [PyPy](https://www.pypy.org/)
 - ……
 
@@ -32,11 +33,15 @@ Windows 平台的发行包包含便捷功能。可于[此处](https://github.com
 
 拖放文件（夹）到批处理文件（`start.bat`）或命令行（`run.py`）以快速分享。
 
+您可以从任意 PHFS 发行包获取所有开发需求。
+
 ## 开发者信息
 
 👀 此作品还不能正式投入使用。但是，试一试吧！
 
 如果您有兴趣测试，可以使用一份 *[release](https://github.com/NaitLee/PHFS/releases)*，或者：
+
+0. 安装 [Python 3](https://www.python.org/)。
 
 1. 安装 [Werkzeug](https://pypi.org/project/Werkzeug/#files)。可以使用 `pip`，或者将下载的压缩包中的文件夹 `Werkzeug-(版本)/src/werkzeug` 放入 clone 的 repo 内。
 
@@ -112,7 +117,7 @@ hide_dots=
 
 - `run.py`: 开始一个服务器。它可用于 aarch64 架构的 [pypy](https://www.pypy.org/)。
 - `hfs.ini`: 一些如端口的配置在这里。此时您可以配置基文件夹作为根目录。
-- `hash.py`: 直接运行此文件以获取密码哈希值。
+- `hash.py`: 直接运行此文件以交互获取密码哈希值。
 
 - `test.py`: 开始一个服务器用于开发、调试。它包含 werkzeug 的重载功能。
 - `_test_macro.py`: 运行指定在命令行 argv1 的宏。

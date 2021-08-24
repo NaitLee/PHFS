@@ -16,16 +16,17 @@
 | 👏 Done Features: | 🕳 To-do Features: |
 | ---- | ---- |
 | Filelist, download | Virtual File System |
-| Sorting files, Archiving | File actions |
-| Upload, Search | Ban, Limits |
-| Accounts, Login | Other |
+| Sorting files, Archiving | Ban, Limits |
+| Upload, Search | Other |
+| Accounts, Login |  |
+| File actions |  |
 
 
 🍉 Supported platforms:
 
 - Windows 7 and upper
 - GNU/Linux, \*nix, \*BSD
-- Android, with [QPython 3L](https://www.qpython.org/)
+- Android, with [QPython 3L](https://www.qpython.org/) or [Termux](https://termux.com/) with `python3` package installed
 - ARM Boards like Raspberry Pi, with [PyPy](https://www.pypy.org/)
 - ...
 
@@ -35,15 +36,19 @@ The release bundle for Windows platform have additional convenient features. Rea
 
 Drag-drop item(s) to batch file (`start.bat`) or command-line (`run.py`) for quick file-sharing.
 
+You can just get all requirements for development in a PHFS release package.
+
 ## Developer Notes
 
 👀 This project is not yet ready for production use. But, please, have a try!
 
 You can try by using a *[release](https://github.com/NaitLee/PHFS/releases)*, or:
 
-1. Install [Werkzeug](https://pypi.org/project/Werkzeug/#files) by either using `pip` or placing the folder `Werkzeug-(version)/src/werkzeug` from downloaded archive to cloned repo.
+0. Install [Python 3](https://www.python.org/).
 
-2. Install [WSGIserver](https://pypi.org/project/WSGIserver/#files) by either using `pip` or placing the file `WSGIserver-(version)/wsgiserver.py` from downloaded archive to cloned repo.
+1. Install [Werkzeug](https://pypi.org/project/Werkzeug/#files) by either using `pip install werkzeug` or placing the folder `Werkzeug-(version)/src/werkzeug` from downloaded archive to cloned repo.
+
+2. Install [WSGIserver](https://pypi.org/project/WSGIserver/#files) by either using `pip install wsgiserver` or placing the file `WSGIserver-(version)/wsgiserver.py` from downloaded archive to cloned repo.
 
 3. Get [sha256.js](https://github.com/AndersLindman/SHA256), place into repo folder.
 
@@ -73,7 +78,7 @@ Template choices:
 
 - `run.py`: Run a server. Has no debug feature, but works on [pypy](https://www.pypy.org/) on aarch64 architecture.
 - `hfs.ini`: Some configs, like port, are here. Currently you can set a base path as the root dir of served pages, also can set upload-allowed paths.
-- `hash.py`: Hash a password by executing this directly.
+- `hash.py`: Hash a password interactively by executing this directly.
 
 - `test.py`: Run a server for testing, debugging. It also contains werkzeug's reload feature.
 - `_test_macro.py`: Run & test a macro, by entering as argv1 in commandline.
