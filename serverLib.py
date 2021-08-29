@@ -35,6 +35,7 @@ class PHFSStatistics():
     variables = {}
 
 class PHFSServer():
+    indexes = ('index.html', 'index.htm', 'default.html', 'default.htm')
     request: PHFSRequest
     statistics = PHFSStatistics()
     interpreter = Interpreter()
@@ -114,7 +115,7 @@ class PHFSServer():
         self.request = request
         if os.path.isdir(resource):
             # If there's a index.html inside folder, show that
-            for i in ['index.html', 'index.htm', 'default.html', 'default.htm']:
+            for i in self.indexes:
                 if os.path.isfile(join_path(resource, i)):
                     path = join_path(path, i)
                     resource = join_path(resource, i)
@@ -138,9 +139,12 @@ class PHFSServer():
                     upload_result = {}
                     for i in request.files:
                         single_file = request.files[i]
-                        if single_file.filename == '':
-                            continue
                         filename = purify_filename(single_file.filename)
+                        if filename == '':
+                            continue
+                        elif filename in self.indexes:
+                            upload_result[filename] = (False, I18n.get_string('file_name_or_extension_forbidden'))
+                            continue
                         try:
                             single_file.save(join_path(resource, filename))
                             upload_result[filename] = (True, '')
@@ -179,12 +183,14 @@ class PHFSServer():
                 else:
                     sid = hashlib.sha256(bytes([random.randint(0, 255) for _ in range(32)])).hexdigest()
                     self.statistics.accounts[sid] = (account_name, request.host)
-                    response = Response('ok', 200, {'Set-Cookie': 'HFS_SID_=%s; HttpOnly' % sid})
+                    response = Response('ok', 200)
+                    response.headers.add_header('Set-Cookie', 'HFS_SID_=%s; HttpOnly; Max-Age=0' % request.cookies.get('HFS_SID_', ''))
+                    response.headers.add_header('Set-Cookie', 'HFS_SID_=%s; HttpOnly' % sid)
             elif mode == 'logout':
                 sid = request.cookies.get('HFS_SID_', '')
                 if sid in self.statistics.accounts:
                     del self.statistics.accounts[sid]
-                response = Response('ok', 200, {'Set-Cookie': 'HFS_SID_=; HttpOnly; Max-Age=0'})
+                response = Response('ok', 200, {'Set-Cookie': 'HFS_SID_=%s; HttpOnly; Max-Age=0' % sid})
             elif mode == 'archive':
                 tmp = tempfile.TemporaryFile(mode='w+b')
                 tar = tarfile.open(mode='w', fileobj=tmp)
