@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-import urllib.parse, os, shutil
+import urllib.parse, os, shutil, tempfile, platform
 
 def smartcopy(src, dst):
     if os.path.isfile(src):
@@ -16,6 +16,42 @@ def smartremove(src):
 
 def smartmove(src, dst):
     shutil.move(src, dst + '/' + os.path.basename(src) if os.path.exists(dst) else dst)
+
+msgbox_consts_vbs = {
+    'okcancel': 1,
+    'yesno': 4,
+    'yesnocancel': 3,
+    'error': 16,
+    'question': 32,
+    'warning': 48,
+    'information': 64
+}
+def smartmsgbox(message: str, buttons: list, title: str) -> int:
+    global msgbox_consts_vbs
+    exitcode = 0
+    system_type = platform.system()
+    if system_type == 'Windows':
+        msgbuttons = 0
+        for i in buttons:
+            msgbuttons += msgbox_consts_vbs.get(i, 0)
+        vbspath = os.path.join(tempfile.gettempdir(), 'phfs-msgbox.vbs')
+        f = open(vbspath, 'w')  # Don't specify encoding='utf-8', vbs not use it
+        f.write('exitcode = MsgBox("%s", %i, "%s")' % (message, msgbuttons, title))
+        f.write('\r\nWScript.Quit(exitcode)\r\n')
+        f.close()
+        exitcode = os.system(vbspath)
+    elif system_type == 'Linux':
+        # Most "universal" method, but doesn't support Unicode
+        param_buttons = 'OK:1'
+        if 'yesno' in buttons:
+            param_buttons = 'Yes:6,No:7'
+        elif 'yesnocancel' in buttons:
+            param_buttons = 'Yes:6,No:7,Cancel:2'
+        elif 'okcancel' in buttons:
+            param_buttons = 'OK:1,Cancel:2'
+        exitcode = int(os.system('xmessage -center -button %s "%s" "%s"' % (param_buttons, title, message)) / 256)
+    # Feel free to implement this for more OS :)
+    return exitcode
 
 def sort(l, m, f):
     """ Bubble sort.  

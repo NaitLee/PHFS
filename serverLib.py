@@ -1,5 +1,5 @@
 
-import os, io, tarfile, tempfile, mimeLib, time, re, random, hashlib, zipfile, datetime, time, shutil
+import os, io, tarfile, tempfile, mimeLib, time, re, random, hashlib, zipfile, datetime, time, shutil, gzip
 import hashLib
 from werkzeug.wrappers import Request, Response
 from werkzeug.utils import send_file
@@ -36,6 +36,7 @@ class PHFSStatistics():
 
 class PHFSServer():
     indexes = ('index.html', 'index.htm', 'default.html', 'default.htm')
+    gzip_limit = int(Config.gzip_limit)
     request: PHFSRequest
     statistics = PHFSStatistics()
     interpreter = Interpreter()
@@ -79,6 +80,9 @@ class PHFSServer():
         if 'HFS_SID_' not in request.cookies:
             sid = hashlib.sha256(bytes([random.randint(0, 255) for _ in range(32)])).hexdigest()
             response.headers['Set-Cookie'] = 'HFS_SID_=%s; HttpOnly' % sid
+        if response.content_length < self.gzip_limit and Config.gzip and 'gzip' in request.accept_encodings and not response.direct_passthrough:
+            response.set_data(gzip.compress(response.get_data()))
+            response.content_encoding = 'gzip'
         account_name = self.get_current_account(request)[0]
         current_time = datetime.datetime.now()
         current_timezone = current_time.astimezone().tzinfo.utcoffset(None).seconds / 60 / 60

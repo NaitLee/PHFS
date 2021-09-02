@@ -1,7 +1,7 @@
 
 import datetime, time, re, os, math, urllib.parse, shutil, hashlib
 from classesLib import MacroResult, UniParam, MacroToCallable
-from helpersLib import concat_dict, wildcard2re, if_upload_allowed_in, float_to_str, is_number, join_path, smartcopy, smartmove
+from helpersLib import concat_dict, wildcard2re, if_upload_allowed_in, float_to_str, is_number, join_path, smartcopy, smartmove, smartmsgbox
 from cfgLib import Config, Account
 
 class Commands():
@@ -103,6 +103,7 @@ class Commands():
             'disk free': lambda p: MacroResult(shutil.disk_usage(p.request.path_real_dir).free),
             'dir': self.macro_dir,
             'is file protected': lambda p: MacroResult(self.FALSE),
+            'dialog': self.dialog,
             '_unsupported': self._unsupported
         }
     def __getitem__(self, key):
@@ -174,6 +175,20 @@ class Commands():
         return path
     def _return_empty(self):
         return MacroResult('')
+    def dialog(self, param: UniParam):
+        l = len(param.params)
+        exitcode = 0
+        buttons = param[2].split(' ')
+        if l == 2:
+            exitcode = smartmsgbox(param[1], [], '')
+        elif l == 3:
+            exitcode = smartmsgbox(param[1], buttons, '')
+        elif l == 4:
+            exitcode = smartmsgbox(param[1], buttons, param[3])
+        result = self._bool(exitcode == 1 or exitcode == 6) # OK/Yes
+        if exitcode == 2 and 'yesnocancel' in buttons:
+            result = 'cancel'
+        return MacroResult(result)
     def add_to_log(self, param: UniParam):
         print(param[1])
         return MacroResult('')
